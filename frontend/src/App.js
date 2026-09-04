@@ -2,26 +2,28 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-  const [users, setUsers] = useState([]);
-  const [formData, setFormData] = useState({ name: '', email: '', age: '' });
+  const [todos, setTodos] = useState([]);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   const API_URL = 'http://localhost:5000/api';
 
-  // Fetch users on mount
+  // Fetch todos on mount
   useEffect(() => {
-    fetchUsers();
+    fetchTodos();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchTodos = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/users`);
-      if (!response.ok) throw new Error('Failed to fetch users');
+      const response = await fetch(`${API_URL}/todos`);
+      if (!response.ok) throw new Error('Failed to fetch todos');
       const data = await response.json();
-      setUsers(data);
+      setTodos(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,108 +31,121 @@ function App() {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddUser = async (e) => {
+  const handleAddTodo = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.age) {
-      setError('All fields required');
+    if (!title.trim()) {
+      setError('Title is required');
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/users`, {
+      const response = await fetch(`${API_URL}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ title, description })
       });
-      if (!response.ok) throw new Error('Failed to add user');
-      setFormData({ name: '', email: '', age: '' });
-      fetchUsers();
+      if (!response.ok) throw new Error('Failed to add todo');
+      setTitle('');
+      setDescription('');
+      fetchTodos();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const handleDeleteUser = async (id) => {
+  const handleToggleTodo = async (todo) => {
     try {
-      const response = await fetch(`${API_URL}/users/${id}`, {
+      const response = await fetch(`${API_URL}/todos/${todo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          title: todo.title, 
+          description: todo.description, 
+          completed: !todo.completed 
+        })
+      });
+      if (!response.ok) throw new Error('Failed to update todo');
+      fetchTodos();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteTodo = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/todos/${id}`, {
         method: 'DELETE'
       });
-      if (!response.ok) throw new Error('Failed to delete user');
-      fetchUsers();
+      if (!response.ok) throw new Error('Failed to delete todo');
+      fetchTodos();
     } catch (err) {
       setError(err.message);
     }
   };
 
   return (
-    <div className="container">
-      <h1>User Management</h1>
-      
-      {error && <div className="error">{error}</div>}
-      
-      <form onSubmit={handleAddUser} className="form">
+    <div className="app-container">
+      <div className="header">
+        <h1>📝 Todo Application</h1>
+        <p className="subtitle">Keep track of your tasks</p>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <form onSubmit={handleAddTodo} className="add-todo-form">
         <input
           type="text"
-          name="name"
-          placeholder="Name"
-          value={formData.name}
-          onChange={handleChange}
+          placeholder="What needs to be done?"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="input-title"
         />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
+        <textarea
+          placeholder="Description (optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="input-description"
+          rows="2"
         />
-        <input
-          type="number"
-          name="age"
-          placeholder="Age"
-          value={formData.age}
-          onChange={handleChange}
-        />
-        <button type="submit">Add User</button>
+        <button type="submit" className="btn-add">Add Todo</button>
       </form>
 
       {loading ? (
-        <p>Loading...</p>
+        <div className="loading">Loading todos...</div>
+      ) : todos.length === 0 ? (
+        <div className="empty-state">
+          <p>No todos yet. Add one to get started! 🚀</p>
+        </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Age</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(user => (
-              <tr key={user.id}>
-                <td>{user.id}</td>
-                <td>{user.name}</td>
-                <td>{user.email}</td>
-                <td>{user.age}</td>
-                <td>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDeleteUser(user.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="todos-list">
+          {todos.map(todo => (
+            <div key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+              <input
+                type="checkbox"
+                checked={todo.completed}
+                onChange={() => handleToggleTodo(todo)}
+                className="todo-checkbox"
+              />
+              <div className="todo-content">
+                <h3 className="todo-title">{todo.title}</h3>
+                {todo.description && <p className="todo-description">{todo.description}</p>}
+              </div>
+              <button 
+                onClick={() => handleDeleteTodo(todo.id)}
+                className="btn-delete"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
       )}
+
+      <div className="stats">
+        <span>{todos.filter(t => !t.completed).length} active</span>
+        <span>{todos.filter(t => t.completed).length} completed</span>
+        <span>{todos.length} total</span>
+      </div>
     </div>
   );
 }
