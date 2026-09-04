@@ -1,34 +1,20 @@
-# Windows Setup Guide
+# My Fullstack App - Windows Setup Guide
 
-Complete step-by-step instructions to run the Todo App on Windows.
+Complete step-by-step instructions to run the Member Savings & Loan Management System on Windows.
 
 ## Step 1: Database Setup (MySQL Workbench)
 
 1. Open **MySQL Workbench**
 2. Double-click your MySQL connection (usually `Local instance MySQL80`)
-3. Paste this and execute:
+3. Open `database-setup.sql` file from project root
+4. Execute the script (Cmd + Enter or Ctrl + Enter)
 
-```sql
-CREATE DATABASE todo_app_db;
-USE todo_app_db;
+✅ Database created with sample data!
 
-CREATE TABLE todos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    completed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
-INSERT INTO todos (title, description, completed) VALUES 
-('Learn React', 'Study React hooks and state management', FALSE),
-('Build Todo App', 'Create a full-stack todo application', FALSE),
-('Setup Database', 'Configure MySQL and create tables', TRUE),
-('Deploy Application', 'Deploy to production server', FALSE);
+Alternatively, use command line:
+```powershell
+mysql -u root < database-setup.sql
 ```
-
-✅ Database ready!
 
 ## Step 2: Backend Setup
 
@@ -62,18 +48,17 @@ copy .env.example .env
 
 Edit `.env` if needed (default works if MySQL password is empty).
 
-7. Run Flask server:
+7. Run FastAPI server:
 ```powershell
-python app.py
+python main.py
 ```
 
 You should see:
 ```
-WARNING in app.run() is not recommended...
-Running on http://127.0.0.1:5000
+Uvicorn running on http://0.0.0.0:8000
 ```
 
-✅ Backend running on port 5000!
+✅ Backend running on port 8000!
 
 **Keep this terminal open.**
 
@@ -101,14 +86,16 @@ A browser window opens automatically at `http://localhost:3000`
 
 ✅ Frontend running!
 
-## Step 4: Test the App
+## Step 4: Test the Application
 
-In your browser:
-1. ✅ See 4 sample todos
-2. ✅ Click checkbox to mark complete
-3. ✅ Type new title and description
-4. ✅ Click "Add Todo" button
-5. ✅ Click "Delete" button
+In your browser (http://localhost:3000):
+
+1. ✅ View Dashboard with statistics
+2. ✅ See 10 sample members
+3. ✅ View 5 sample loans
+4. ✅ Track contributions
+5. ✅ View loan repayments
+6. ✅ Check financial reports
 
 All changes sync instantly with database!
 
@@ -130,10 +117,16 @@ netstat -ano | findstr :3000
 taskkill /PID [PID_NUMBER] /F
 ```
 
+**"Port 8000 already in use"**
+```powershell
+netstat -ano | findstr :8000
+taskkill /PID [PID_NUMBER] /F
+```
+
 **Backend connection error**
 - Ensure MySQL is running (System Tray → MySQL icon)
 - Check `.env` file matches your MySQL credentials
-- Default: user=root, password=(empty), database=todo_app_db
+- Default: user=root, password=(empty), database=member_loan_db
 
 **npm install slow/stuck**
 ```powershell
@@ -151,7 +144,7 @@ npm install
 
 1. Backend terminal: `Ctrl + C`
 2. Frontend terminal: `Ctrl + C`
-3. MySQL: Keep running
+3. MySQL: Keep running or close
 
 ## Restarting Next Time
 
@@ -159,11 +152,39 @@ npm install
 # Terminal 1 - Backend
 cd C:\Users\Canny_831013\Documents\GIT\my-fullstack-app\backend
 venv\Scripts\activate
-python app.py
+python main.py
 
 # Terminal 2 - Frontend
 cd C:\Users\Canny_831013\Documents\GIT\my-fullstack-app\frontend
 npm start
 ```
 
-Done! 🎉
+## Ports
+
+Make sure these ports are free:
+- **8000**: Backend (FastAPI)
+- **3000**: Frontend (React)
+- **3306**: MySQL Database
+
+## Default Credentials
+
+- Username: `admin`
+- Email: `admin@loansystem.com`
+- Password: Use registration to create account
+
+## Features Available
+
+✅ Manage members and contributions
+✅ Create and track loans
+✅ Record loan payments
+✅ View financial dashboards
+✅ Generate reports
+✅ Track expenses
+✅ Monthly closing
+
+---
+
+**System Ready!** 🎉
+
+- Dashboard: http://localhost:3000
+- API Docs: http://localhost:8000/docs
