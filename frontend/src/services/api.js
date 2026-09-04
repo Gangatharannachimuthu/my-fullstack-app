@@ -48,6 +48,18 @@ export const loanService = {
   create: (data) => api.post('/loans', data),
 };
 
+export const contributionService = {
+  getAll: (params) => api.get('/contributions', { params }),
+  getById: (id) => api.get(`/contributions/${id}`),
+  create: (data) => api.post('/contributions', data),
+};
+
+export const repaymentService = {
+  getAll: (params) => api.get('/repayments', { params }),
+  getById: (id) => api.get(`/repayments/${id}`),
+  create: (data) => api.post('/repayments', data),
+};
+
 export const dashboardService = {
   getStats: () => api.get('/dashboard/stats'),
 };

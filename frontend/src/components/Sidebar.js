@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Home, Users, DollarSign, Repeat2, FileText, Settings, X } from 'lucide-react';
+import { Home, Users, DollarSign, Repeat2, FileText, Settings, X } from 'lucide-react';
 import '../styles/Sidebar.css';
 
 function Sidebar({ isOpen, onClose, onNavigate }) {

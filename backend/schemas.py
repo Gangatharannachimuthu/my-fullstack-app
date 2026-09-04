@@ -16,7 +16,7 @@ class MemberCreate(BaseModel):
     phone_number: Optional[str] = None
     address: Optional[str] = None
     join_date: str
-    monthly_sandha_amount: float = 1000
+    monthly_sandha_amount: float = 1000.0
 
 class MemberResponse(BaseModel):
     id: int

@@ -123,3 +123,12 @@
   color: #c33;
   border-left: 4px solid #c33;
 }
+
+.badge-warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.font-weight-bold {
+  font-weight: bold;
+}
