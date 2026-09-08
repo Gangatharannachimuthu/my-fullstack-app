@@ -1,12 +1,12 @@
 import React from 'react';
-import { LogOut, User, Menu } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import '../styles/Navbar.css';
 
 function Navbar({ userName, onLogout }) {
   return (
     <nav className="navbar">
       <div className="navbar-left">
-        <h2>Member Loan Management</h2>
+        <h2>Masiriyamman Mandram Ledger</h2>
       </div>
       <div className="navbar-right">
         <div className="user-info">

@@ -17,45 +17,11 @@ body {
   height: 100vh;
 }
 
-.app-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
 .main-content {
   flex: 1;
   overflow-y: auto;
-  margin-left: 250px;
   background-color: #f5f5f5;
   position: relative;
-}
-
-.menu-btn {
-  display: none;
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 8px;
-  cursor: pointer;
-  z-index: 50;
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    margin-left: 0;
-  }
-
-  .menu-btn {
-    display: block;
-  }
-
-  .main-content > div:first-child {
-    margin-top: 60px;
-  }
 }
 
 /* Scrollbar styling */
