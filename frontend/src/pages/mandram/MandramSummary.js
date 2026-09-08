@@ -1,11 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { meetingService } from '../../services/mandramApi';
 
-function Tile({ label, value, highlight }) {
+function fmt(value) {
+  const num = Number(value || 0);
+  return num < 0 ? `− ₹${Math.abs(num).toFixed(2)}` : `₹${num.toFixed(2)}`;
+}
+
+function SummaryTable({ title, rows, fullWidth }) {
   return (
-    <div className={`summary-tile ${highlight ? 'highlight' : ''}`}>
-      <div className="label">{label}</div>
-      <div className="value">₹{Number(value || 0).toFixed(2)}</div>
+    <div className={`summary-section ${fullWidth ? 'summary-section-full' : ''}`}>
+      <h3>{title}</h3>
+      <table className="table">
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <td>{row.label}</td>
+              <td style={row.highlight ? { fontWeight: 700 } : undefined}>{fmt(row.value)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -68,45 +82,44 @@ function MandramSummary({ meetingId, onFinalized }) {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div className="summary-section">
-        <h3>Income (வரவு)</h3>
-        <div className="summary-grid">
-          <Tile label="Share Contributions" value={summary.income.share_income} />
-          <Tile label="EMI Loan Interest" value={summary.income.emi_loan_interest} />
-          <Tile label="Personal Loan Interest" value={summary.income.personal_loan_interest} />
-          <Tile label="Other Income" value={summary.income.other_income} />
-          <Tile label="Total Income" value={summary.income.total_income} highlight />
-        </div>
-      </div>
+      <div className="summary-quadrants">
+        <SummaryTable
+          title="Income (வரவு)"
+          rows={[
+            { label: 'Share Contributions', value: summary.income.share_income },
+            { label: 'EMI Loan Interest', value: summary.income.emi_loan_interest },
+            { label: 'Personal Loan Interest', value: summary.income.personal_loan_interest },
+            { label: 'Other Income', value: summary.income.other_income },
+            { label: 'Total Income', value: summary.income.total_income, highlight: true },
+          ]}
+        />
 
-      <div className="summary-section">
-        <h3>Expenditure (செலவு)</h3>
-        <div className="summary-grid">
-          <Tile label="Total Expenditure" value={summary.expenditure.total_expenditure} />
-          <Tile label="Net Income" value={summary.net_income} highlight />
-        </div>
-      </div>
+        <SummaryTable
+          title="Expenditure (செலவு)"
+          rows={[
+            { label: 'Total Expenditure', value: summary.expenditure.total_expenditure },
+            { label: 'Net Income', value: summary.net_income, highlight: true },
+          ]}
+        />
 
-      <div className="summary-section">
-        <h3>Collections & Disbursements</h3>
-        <div className="summary-grid">
-          <Tile label="EMI Principal Collected" value={summary.collections.emi_principal_collected} />
-          <Tile label="Personal Loan Collected" value={summary.collections.personal_loan_collected} />
-          <Tile label="New Personal Loans Disbursed" value={summary.new_personal_loans_disbursed} />
-          <Tile label="New EMI Loans Disbursed" value={summary.new_emi_loans_disbursed} />
-          <Tile label="Investment / Savings Outflow" value={summary.total_investment_outflow} />
-        </div>
-      </div>
-
-      <div className="summary-section">
-        <h3>Balance Roll-Forward</h3>
-        <div className="summary-grid">
-          <Tile label="Opening Balance" value={summary.opening_balance} />
-          <Tile label="Closing Balance" value={summary.closing_balance} highlight />
-          <Tile label="Outstanding EMI Loans" value={summary.outstanding_emi_loans} />
-          <Tile label="Outstanding Personal Loans" value={summary.outstanding_personal_loans} />
-          <Tile label="Mandram Total Value" value={summary.trust_total_value} highlight />
-        </div>
+        <SummaryTable
+          title="Balance Roll-Forward (this month's total balance)"
+          fullWidth
+          rows={[
+            { label: 'Last Month Balance (Opening)', value: summary.opening_balance },
+            { label: '+ This Month Total Income', value: summary.income.total_income },
+            { label: '+ EMI Loan Amount Collected', value: summary.collections.emi_principal_collected },
+            { label: '+ Personal Loan Amount Collected', value: summary.collections.personal_loan_collected },
+            { label: '− New EMI Loans Given Out', value: -summary.new_emi_loans_disbursed },
+            { label: '− New Personal Loans Given Out', value: -summary.new_personal_loans_disbursed },
+            { label: '− Total Expenditure', value: -summary.expenditure.total_expenditure },
+            { label: '− Investment / Savings (Gold, Chit, etc.)', value: -summary.total_investment_outflow },
+            { label: '= Current Month Total Balance', value: summary.closing_balance, highlight: true },
+            { label: 'Outstanding EMI Loans (not yet collected)', value: summary.outstanding_emi_loans },
+            { label: 'Outstanding Personal Loans (not yet collected)', value: summary.outstanding_personal_loans },
+            { label: 'Mandram Total Value', value: summary.trust_total_value, highlight: true },
+          ]}
+        />
       </div>
     </div>
   );

@@ -1,15 +1,36 @@
-from models import Loan, LoanPayment, Member, Penalty, PersonalLoan, ShareContribution
+from models import Loan, LoanPayment, Meeting, Member, Penalty, PersonalLoan, ShareContribution
 
 
 def _f(value):
     return float(value) if value is not None else None
 
 
+def _meeting_key(meeting_id):
+    """(year, month) tuple for chronological comparison, or None if unknown."""
+    if meeting_id is None:
+        return None
+    meeting = Meeting.query.get(meeting_id)
+    return (meeting.year, meeting.month) if meeting else None
+
+
 def build_ledger_row(member: Member, meeting_id: int):
-    """Sheet-1 equivalent row: one member's ledger entry for one meeting."""
+    """Sheet-1 equivalent row: one member's ledger entry for one meeting.
+
+    Loan and personal-loan activity is scoped chronologically by (year, month): a loan
+    taken in a later meeting must never appear in an earlier meeting's row, and a loan's
+    effects only ever show up from its own month onward.
+    """
+    this_key = _meeting_key(meeting_id)
+
     contribution = ShareContribution.query.filter_by(member_id=member.id, meeting_id=meeting_id).first()
 
     active_loan = Loan.query.filter_by(member_id=member.id, status="active").first()
+    if active_loan and active_loan.start_meeting_id:
+        start_key = _meeting_key(active_loan.start_meeting_id)
+        if start_key and this_key and start_key > this_key:
+            # This loan didn't exist yet as of the meeting being viewed.
+            active_loan = None
+
     loan_payment = None
     just_given_emi = False
     if active_loan:
@@ -28,11 +49,14 @@ def build_ledger_row(member: Member, meeting_id: int):
         # Same loan disbursed and repaid within this meeting - the "repaid" block already covers it.
         personal_loan_new = None
 
-    personal_loan_pending = (
-        PersonalLoan.query.filter_by(member_id=member.id, status="outstanding")
-        .filter(PersonalLoan.disbursed_meeting_id != meeting_id)
-        .first()
-    )
+    personal_loan_pending = None
+    for candidate in PersonalLoan.query.filter_by(member_id=member.id, status="outstanding").all():
+        if candidate.disbursed_meeting_id == meeting_id:
+            continue  # that's "new", not "pending"
+        disbursed_key = _meeting_key(candidate.disbursed_meeting_id)
+        if disbursed_key and this_key and disbursed_key < this_key:
+            personal_loan_pending = candidate
+            break
 
     penalties = Penalty.query.filter_by(member_id=member.id, meeting_id=meeting_id).all()
 
