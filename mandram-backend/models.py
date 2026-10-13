@@ -7,6 +7,29 @@ def _f(value):
     return float(value) if value is not None else None
 
 
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), nullable=False, unique=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.Enum("admin", "viewer", name="user_role"), nullable=False, default="viewer")
+    # Which member in the ledger this login belongs to. A viewer only ever sees this
+    # member's loans; an admin normally has none, since they act for the whole trust.
+    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        member = Member.query.get(self.member_id) if self.member_id else None
+        return {
+            "id": self.id,
+            "username": self.username,
+            "role": self.role,
+            "member_id": self.member_id,
+            "member_name": member.name if member else None,
+        }
+
+
 class Member(db.Model):
     __tablename__ = "members"
 
@@ -216,6 +239,18 @@ class InvestmentEntry(db.Model):
     meeting_id = db.Column(db.Integer, db.ForeignKey("meetings.id"), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey("investment_categories.id"), nullable=False)
     amount = db.Column(db.Numeric(12, 2), nullable=False)
+    # Chit auction dividend returned to the mandram when another member wins the
+    # auction: `amount` stays the full chit value, and this comes back to us, so the
+    # real cash out for the month is amount - commission_amount.
+    commission_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    # What the chit was auctioned for this month (the winning bid). Tracked for the
+    # record only - the month's cash out is still `amount` and the dividend back to
+    # us is still `commission_amount`; this feeds no calculation.
+    auction_amount = db.Column(db.Numeric(12, 2))
+    # Which chit scheme this month's entry belongs to, when it is a chit at all.
+    # Nullable: Gold/FD entries have no chit, and chit entries predating the Chit
+    # Management tab are unlinked until someone attaches them.
+    chit_id = db.Column(db.Integer, db.ForeignKey("chits.id"), nullable=True)
     note = db.Column(db.String(255))
 
     category = db.relationship("InvestmentCategory")
@@ -227,6 +262,9 @@ class InvestmentEntry(db.Model):
             "category_id": self.category_id,
             "category_name": self.category.name if self.category else None,
             "amount": _f(self.amount),
+            "commission_amount": _f(self.commission_amount) or 0.0,
+            "auction_amount": _f(self.auction_amount),
+            "chit_id": self.chit_id,
             "note": self.note,
         }
 
@@ -244,5 +282,114 @@ class OtherIncomeEntry(db.Model):
             "id": self.id,
             "meeting_id": self.meeting_id,
             "description": self.description,
+            "amount": _f(self.amount),
+        }
+
+
+class Chit(db.Model):
+    """A chit scheme the mandram has *won* an auction in.
+
+    Deliberately higher-level than InvestmentEntry: an investment entry is the
+    month-by-month cash (what we paid in, what commission came back), while a chit
+    row is recorded once, at the point we take the chit, and carries the scheme's
+    headline details plus the lump sum we received.
+    """
+
+    __tablename__ = "chits"
+
+    id = db.Column(db.Integer, primary_key=True)
+    # The meeting we took the chit in. This is what places `amount_taken` in a
+    # specific month's Balance Roll-Forward.
+    meeting_id = db.Column(db.Integer, db.ForeignKey("meetings.id"), nullable=False)
+    # When the chit scheme itself started, which is usually well before the month we
+    # won it. Purely informational: the money still lands in the Balance Roll-Forward
+    # on `meeting_id` (the month taken), never on this date.
+    initiate_date = db.Column(db.Date)
+    host_name = db.Column(db.String(150), nullable=False)
+    # The fixed amount the mandram pays into the chit each month.
+    agent_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    # How many auction cycles the scheme runs for.
+    auction_count = db.Column(db.Integer, nullable=False, default=0)
+    # The lump sum we actually received on winning the auction - cash in.
+    amount_taken = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    note = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    meeting = db.relationship("Meeting")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "meeting_id": self.meeting_id,
+            "meeting_month": self.meeting.month if self.meeting else None,
+            "meeting_year": self.meeting.year if self.meeting else None,
+            "initiate_date": self.initiate_date.isoformat() if self.initiate_date else None,
+            "host_name": self.host_name,
+            "agent_amount": _f(self.agent_amount),
+            "auction_count": self.auction_count,
+            "amount_taken": _f(self.amount_taken),
+            "total_committed": _f(self.agent_amount) * (self.auction_count or 0),
+            "note": self.note,
+        }
+
+
+class JoiningDue(db.Model):
+    """What a member joining an established mandram owes to buy in.
+
+    A member who joins after the group has been running is buying an equal share of
+    what the existing members have already built (the trust's total value the month
+    before they joined, divided by the number of members at that point). It is a
+    one-off capital amount, entirely separate from the monthly share contribution -
+    the monthly share keeps everyone level going forward, this settles the past.
+    """
+
+    __tablename__ = "joining_dues"
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False, unique=True)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    # The meeting whose net worth the figure was derived from, kept so the amount can
+    # be justified later rather than looking arbitrary.
+    basis_meeting_id = db.Column(db.Integer, db.ForeignKey("meetings.id"))
+    note = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    member = db.relationship("Member")
+    basis_meeting = db.relationship("Meeting")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "member_id": self.member_id,
+            "member_name": self.member.name if self.member else None,
+            "total_amount": _f(self.total_amount),
+            "basis_meeting_id": self.basis_meeting_id,
+            "basis_label": (
+                f"{self.basis_meeting.month}/{self.basis_meeting.year}" if self.basis_meeting else None
+            ),
+            "note": self.note,
+        }
+
+
+class JoiningPayment(db.Model):
+    """One installment a member paid toward their joining due, in one meeting."""
+
+    __tablename__ = "joining_payments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False)
+    meeting_id = db.Column(db.Integer, db.ForeignKey("meetings.id"), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+
+    # One row per member per meeting - a correction edits it rather than stacking.
+    __table_args__ = (
+        db.UniqueConstraint("member_id", "meeting_id", name="uq_member_meeting_joining"),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "member_id": self.member_id,
+            "meeting_id": self.meeting_id,
             "amount": _f(self.amount),
         }

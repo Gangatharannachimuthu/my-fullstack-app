@@ -3,7 +3,7 @@ import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { expenditureService } from '../../services/mandramApi';
 import IconButton from './IconButton';
 
-function MandramExpenditures({ meetingId }) {
+function MandramExpenditures({ meetingId, canEdit = true }) {
   const [categories, setCategories] = useState([]);
   const [entries, setEntries] = useState([]);
   const [categoryId, setCategoryId] = useState('');
@@ -12,6 +12,8 @@ function MandramExpenditures({ meetingId }) {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({});
+  const [newCategory, setNewCategory] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
 
   const refresh = useCallback(async () => {
     const [catRes, entriesRes] = await Promise.all([
@@ -37,6 +39,23 @@ function MandramExpenditures({ meetingId }) {
       await refresh();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add expenditure');
+    }
+  };
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    const name = newCategory.trim();
+    if (!name) return;
+    try {
+      setError('');
+      const res = await expenditureService.createCategory({ name });
+      setNewCategory('');
+      setAddingCategory(false);
+      await refresh();
+      // Preselect what was just added, so it can be used straight away.
+      setCategoryId(String(res.data.id));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add category');
     }
   };
 
@@ -85,19 +104,52 @@ function MandramExpenditures({ meetingId }) {
     <div className="card">
       <h2>Expenditure</h2>
       {error && <div className="alert alert-error">{error}</div>}
-      <form onSubmit={handleAdd} className="inline-form" style={{ marginBottom: 16 }}>
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-          <option value="">Select category</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <input type="number" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-        <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-        <button type="submit" className="btn btn-primary">Add</button>
-      </form>
+      {canEdit && (
+        <form onSubmit={handleAdd} className="inline-form" style={{ marginBottom: 16 }}>
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+            <option value="">Select category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <input type="number" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <button type="submit" className="btn btn-primary">Add</button>
+        </form>
+      )}
+
+      {canEdit &&
+        (addingCategory ? (
+          <form onSubmit={handleAddCategory} className="inline-form" style={{ marginBottom: 16 }}>
+            <input
+              type="text"
+              placeholder="New category name"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              autoFocus
+              required
+            />
+            <button type="submit" className="btn btn-primary">Save Category</button>
+            <IconButton
+              icon={X}
+              variant="cancel"
+              title="Cancel"
+              onClick={() => {
+                setAddingCategory(false);
+                setNewCategory('');
+                setError('');
+              }}
+            />
+          </form>
+        ) : (
+          <p style={{ marginBottom: 16 }}>
+            <button type="button" className="btn-link" onClick={() => setAddingCategory(true)}>
+              + Add a category
+            </button>
+          </p>
+        ))}
 
       {entries.length === 0 ? (
         <p>No expenditure recorded for this meeting.</p>
@@ -108,7 +160,7 @@ function MandramExpenditures({ meetingId }) {
               <th>Category</th>
               <th>Amount</th>
               <th>Note</th>
-              <th></th>
+              {canEdit && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -154,12 +206,14 @@ function MandramExpenditures({ meetingId }) {
                   <td>{e.category_name}</td>
                   <td>₹{Number(e.amount).toFixed(2)}</td>
                   <td>{e.note || '-'}</td>
-                  <td>
-                    <div className="icon-btn-group">
-                      <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEdit(e)} />
-                      <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(e.id)} />
-                    </div>
-                  </td>
+                  {canEdit && (
+                    <td>
+                      <div className="icon-btn-group">
+                        <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEdit(e)} />
+                        <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(e.id)} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               )
             )}
@@ -167,7 +221,7 @@ function MandramExpenditures({ meetingId }) {
               <td className="font-weight-bold">Total</td>
               <td className="font-weight-bold">₹{total.toFixed(2)}</td>
               <td></td>
-              <td></td>
+              {canEdit && <td></td>}
             </tr>
           </tbody>
         </table>

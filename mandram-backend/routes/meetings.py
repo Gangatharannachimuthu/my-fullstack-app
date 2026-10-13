@@ -14,8 +14,13 @@ from models import (
     ShareContribution,
 )
 from services.guards import ensure_meeting_editable
-from services.ledger_service import build_ledger_row
-from services.summary_service import compute_summary, finalize_meeting, resolve_opening_balance
+from services.ledger_service import build_ledger_row, members_in_meeting
+from services.summary_service import (
+    compute_summary,
+    finalize_meeting,
+    resolve_all_opening_balances,
+    resolve_opening_balance,
+)
 
 meetings_bp = Blueprint("meetings", __name__)
 
@@ -29,7 +34,15 @@ def _meeting_dict(meeting):
 @meetings_bp.get("/api/meetings")
 def list_meetings():
     meetings = Meeting.query.order_by(Meeting.year.desc(), Meeting.month.desc()).all()
-    return jsonify([_meeting_dict(m) for m in meetings])
+    # One chronological pass for the whole list - resolving each meeting's opening
+    # balance on its own re-walks the chain every time, which is O(n^2).
+    openings = resolve_all_opening_balances()
+    payload = []
+    for m in meetings:
+        data = m.to_dict()
+        data["opening_balance"] = float(openings[m.id])
+        payload.append(data)
+    return jsonify(payload)
 
 
 @meetings_bp.post("/api/meetings")
@@ -121,7 +134,7 @@ def delete_meeting(meeting_id):
 @meetings_bp.get("/api/meetings/<int:meeting_id>/ledger")
 def get_meeting_ledger(meeting_id):
     meeting = Meeting.query.get_or_404(meeting_id)
-    members = Member.query.filter_by(is_active=True).order_by(Member.name).all()
+    members = members_in_meeting(meeting)
     rows = [build_ledger_row(member, meeting.id) for member in members]
     return jsonify({"meeting": _meeting_dict(meeting), "rows": rows})
 

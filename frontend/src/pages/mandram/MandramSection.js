@@ -7,7 +7,9 @@ import MandramPersonalLoans from './MandramPersonalLoans';
 import MandramLedger from './MandramLedger';
 import MandramExpenditures from './MandramExpenditures';
 import MandramInvestments from './MandramInvestments';
+import MandramChits from './MandramChits';
 import MandramSummary from './MandramSummary';
+import MandramUsers from './MandramUsers';
 import '../../styles/Pages.css';
 import './Mandram.css';
 
@@ -19,7 +21,9 @@ const TABS = [
   { key: 'personal-loans', label: 'Personal Loans' },
   { key: 'expenditures', label: 'Expenditures' },
   { key: 'investments', label: 'Investments' },
+  { key: 'chits', label: 'Chit Management' },
   { key: 'summary', label: 'Monthly Summary' },
+  { key: 'users', label: 'Users', adminOnly: true },
 ];
 
 const MEETING_SCOPED_TABS = ['ledger', 'loans', 'personal-loans', 'expenditures', 'investments', 'summary'];
@@ -29,8 +33,9 @@ function monthLabel(month, year) {
   return `${names[month]} ${year}`;
 }
 
-function MandramSection() {
+function MandramSection({ canEdit = true, isAdmin = false, memberId = null }) {
   const [activeTab, setActiveTab] = useState('meetings');
+  const visibleTabs = TABS.filter((tab) => !tab.adminOnly || isAdmin);
   const [meetings, setMeetings] = useState([]);
   const [members, setMembers] = useState([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState(null);
@@ -67,7 +72,7 @@ function MandramSection() {
     <div className="page-container">
 
       <div className="tab-bar">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.key}
             className={`tab-button ${activeTab === tab.key ? 'active' : ''}`}
@@ -106,29 +111,61 @@ function MandramSection() {
       ) : (
         <>
           {activeTab === 'meetings' && (
-            <MandramMeetings meetings={meetings} onChanged={refreshMeetings} />
+            <MandramMeetings meetings={meetings} onChanged={refreshMeetings} canEdit={canEdit} />
           )}
           {activeTab === 'members' && (
-            <MandramMembers members={members} onChanged={refreshMembers} />
+            <MandramMembers
+              members={members}
+              onChanged={refreshMembers}
+              canEdit={canEdit}
+              isAdmin={isAdmin}
+            />
           )}
           {activeTab === 'loans' && (
-            <MandramLoans members={members} selectedMeetingId={selectedMeetingId} />
+            <MandramLoans
+              members={members}
+              meetings={meetings}
+              selectedMeetingId={selectedMeetingId}
+              canEdit={canEdit}
+              isAdmin={isAdmin}
+              memberId={memberId}
+            />
           )}
           {activeTab === 'personal-loans' && (
             <MandramPersonalLoans
               members={members}
               meetings={meetings}
               selectedMeetingId={selectedMeetingId}
+              canEdit={canEdit}
+              isAdmin={isAdmin}
+              memberId={memberId}
             />
           )}
           {activeTab === 'ledger' && (
-            <MandramLedger meetingId={selectedMeetingId} members={members} />
+            <MandramLedger
+              meetingId={selectedMeetingId}
+              members={members}
+              canEdit={canEdit}
+              isAdmin={isAdmin}
+            />
           )}
-          {activeTab === 'expenditures' && <MandramExpenditures meetingId={selectedMeetingId} />}
-          {activeTab === 'investments' && <MandramInvestments meetingId={selectedMeetingId} />}
+          {activeTab === 'expenditures' && (
+            <MandramExpenditures meetingId={selectedMeetingId} canEdit={canEdit} />
+          )}
+          {activeTab === 'investments' && (
+            <MandramInvestments meetingId={selectedMeetingId} canEdit={canEdit} />
+          )}
+          {activeTab === 'chits' && (
+            <MandramChits
+              meetings={meetings}
+              selectedMeetingId={selectedMeetingId}
+              canEdit={canEdit}
+            />
+          )}
           {activeTab === 'summary' && (
-            <MandramSummary meetingId={selectedMeetingId} onFinalized={refreshMeetings} />
+            <MandramSummary meetingId={selectedMeetingId} onFinalized={refreshMeetings} canEdit={canEdit} />
           )}
+          {activeTab === 'users' && isAdmin && <MandramUsers members={members} />}
         </>
       )}
     </div>

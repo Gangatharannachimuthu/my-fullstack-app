@@ -2,7 +2,10 @@ from flask import Blueprint, jsonify, request
 
 from extensions import db
 from models import Loan, LoanPayment, Meeting
+from services.auth_service import scoped_member_id
 from services.guards import ensure_meeting_editable
+from services.joining_service import blocking_message
+from services.loan_service import closing_meeting_ids
 
 loans_bp = Blueprint("loans", __name__)
 
@@ -24,14 +27,23 @@ def _has_later_payment(loan_id, meeting_id, meeting):
 @loans_bp.get("/api/loans")
 def list_loans():
     query = Loan.query
-    member_id = request.args.get("member_id", type=int)
+    # A viewer is pinned to their own member, whatever they asked for.
+    member_id = scoped_member_id(request.args.get("member_id", type=int))
     status = request.args.get("status")
     if member_id:
         query = query.filter_by(member_id=member_id)
     if status:
         query = query.filter_by(status=status)
     loans = query.order_by(Loan.created_at.desc()).all()
-    return jsonify([loan.to_dict() for loan in loans])
+
+    closing = closing_meeting_ids([loan.id for loan in loans])
+    payload = []
+    for loan in loans:
+        data = loan.to_dict()
+        # Only meaningful for a closed loan; None means "still running".
+        data["closed_meeting_id"] = closing.get(loan.id) if loan.status == "closed" else None
+        payload.append(data)
+    return jsonify(payload)
 
 
 @loans_bp.post("/api/loans")
@@ -44,10 +56,16 @@ def create_loan():
     if float(principal_amount) <= 0:
         return jsonify({"error": "principal_amount must be positive"}), 400
 
-    existing_active = Loan.query.filter_by(member_id=member_id, status="active").first()
-    if existing_active:
-        return jsonify({"error": "This member already has an active EMI loan"}), 409
+    # A member who has not bought into the fund yet would mostly be borrowing the
+    # other members' capital, so the loan is blocked until their joining due is
+    # cleared. An admin can still proceed deliberately with override_joining_due.
+    if not data.get("override_joining_due"):
+        blocked = blocking_message(member_id)
+        if blocked:
+            return jsonify({"error": blocked, "joining_due_block": True}), 409
 
+    # A member may hold more than one EMI loan at a time - taking a second loan
+    # while the first is still being repaid is allowed.
     loan = Loan(
         member_id=member_id,
         principal_amount=principal_amount,

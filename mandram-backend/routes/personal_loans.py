@@ -2,7 +2,9 @@ from flask import Blueprint, jsonify, request
 
 from extensions import db
 from models import Meeting, PersonalLoan
+from services.auth_service import scoped_member_id
 from services.guards import ensure_meeting_editable
+from services.joining_service import blocking_message
 
 personal_loans_bp = Blueprint("personal_loans", __name__)
 
@@ -10,7 +12,8 @@ personal_loans_bp = Blueprint("personal_loans", __name__)
 @personal_loans_bp.get("/api/personal-loans")
 def list_personal_loans():
     query = PersonalLoan.query
-    member_id = request.args.get("member_id", type=int)
+    # A viewer is pinned to their own member, whatever they asked for.
+    member_id = scoped_member_id(request.args.get("member_id", type=int))
     status = request.args.get("status")
     if member_id:
         query = query.filter_by(member_id=member_id)
@@ -34,6 +37,12 @@ def disburse_personal_loan():
 
     Meeting.query.get_or_404(disbursed_meeting_id)
     ensure_meeting_editable(disbursed_meeting_id)
+
+    # Same rule as EMI loans: no borrowing until the joining contribution is settled.
+    if not data.get("override_joining_due"):
+        blocked = blocking_message(member_id)
+        if blocked:
+            return jsonify({"error": blocked, "joining_due_block": True}), 409
 
     if PersonalLoan.query.filter_by(member_id=member_id, status="outstanding").first():
         return jsonify({"error": "This member already has an outstanding personal loan"}), 409

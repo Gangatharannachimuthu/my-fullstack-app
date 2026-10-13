@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
+import { authService } from '../services/mandramApi';
 import '../styles/LoginPage.css';
 
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!username || !password) {
       setError('Enter a username and password');
       return;
     }
-    setError('');
-    onLogin(username);
+    try {
+      setLoading(true);
+      setError('');
+      const res = await authService.login(username, password);
+      onLogin(res.data.username, res.data.role, res.data.member_id);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -47,8 +57,8 @@ function LoginPage({ onLogin }) {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary">
-            Login
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>

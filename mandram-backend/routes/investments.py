@@ -1,10 +1,34 @@
 from flask import Blueprint, jsonify, request
 
 from extensions import db
-from models import InvestmentCategory, InvestmentEntry, Meeting
+from models import Chit, InvestmentCategory, InvestmentEntry, Meeting
 from services.guards import ensure_meeting_editable
 
 investments_bp = Blueprint("investments", __name__)
+
+
+def _resolve_auction_amount(value):
+    """Optional tracking figure - what the chit went for at auction. Returns
+    (amount_or_None, error). Blank clears it."""
+    if value in (None, ""):
+        return None, None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None, "auction_amount must be a number"
+    if amount < 0:
+        return None, "auction_amount cannot be negative"
+    return value, None
+
+
+def _resolve_chit_id(value):
+    """Validate an optional chit link. Returns (chit_id, error). A blank value means
+    'no chit', which is normal for Gold/FD entries."""
+    if value in (None, "", 0):
+        return None, None
+    if not Chit.query.get(value):
+        return None, "chit_id does not match any chit"
+    return value, None
 
 
 @investments_bp.get("/api/investment-categories")
@@ -44,10 +68,30 @@ def create_meeting_investment(meeting_id):
         return jsonify({"error": "category_id and amount are required"}), 400
     if float(amount) <= 0:
         return jsonify({"error": "amount must be positive"}), 400
+
+    commission_amount = data.get("commission_amount") or 0
+    if float(commission_amount) < 0:
+        return jsonify({"error": "commission_amount cannot be negative"}), 400
+    if float(commission_amount) > float(amount):
+        return jsonify({"error": "commission_amount cannot exceed the amount"}), 400
+    chit_id, chit_error = _resolve_chit_id(data.get("chit_id"))
+    if chit_error:
+        return jsonify({"error": chit_error}), 400
+
+    auction_amount, auction_error = _resolve_auction_amount(data.get("auction_amount"))
+    if auction_error:
+        return jsonify({"error": auction_error}), 400
+
     ensure_meeting_editable(meeting_id)
 
     entry = InvestmentEntry(
-        meeting_id=meeting_id, category_id=category_id, amount=amount, note=data.get("note")
+        meeting_id=meeting_id,
+        category_id=category_id,
+        amount=amount,
+        commission_amount=commission_amount,
+        auction_amount=auction_amount,
+        chit_id=chit_id,
+        note=data.get("note"),
     )
     db.session.add(entry)
     db.session.commit()
@@ -66,8 +110,26 @@ def update_investment_entry(entry_id):
         if float(data["amount"]) <= 0:
             return jsonify({"error": "amount must be positive"}), 400
         entry.amount = data["amount"]
+    if "commission_amount" in data:
+        commission_amount = data["commission_amount"] or 0
+        if float(commission_amount) < 0:
+            return jsonify({"error": "commission_amount cannot be negative"}), 400
+        entry.commission_amount = commission_amount
+    if "auction_amount" in data:
+        auction_amount, auction_error = _resolve_auction_amount(data["auction_amount"])
+        if auction_error:
+            return jsonify({"error": auction_error}), 400
+        entry.auction_amount = auction_amount
+    if "chit_id" in data:
+        chit_id, chit_error = _resolve_chit_id(data["chit_id"])
+        if chit_error:
+            return jsonify({"error": chit_error}), 400
+        entry.chit_id = chit_id
     if "note" in data:
         entry.note = data["note"]
+
+    if float(entry.commission_amount or 0) > float(entry.amount):
+        return jsonify({"error": "commission_amount cannot exceed the amount"}), 400
 
     db.session.commit()
     return jsonify(entry.to_dict())

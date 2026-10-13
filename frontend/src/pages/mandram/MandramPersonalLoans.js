@@ -3,20 +3,32 @@ import { Check, Pencil, RotateCcw, Trash2, X } from 'lucide-react';
 import { personalLoanService } from '../../services/mandramApi';
 import IconButton from './IconButton';
 
-function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
+function MandramPersonalLoans({
+  members,
+  meetings,
+  selectedMeetingId,
+  canEdit = true,
+  isAdmin = false,
+  memberId: ownMemberId = null,
+}) {
   const [loans, setLoans] = useState([]);
   const [memberId, setMemberId] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [repayInputs, setRepayInputs] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [filterMemberId, setFilterMemberId] = useState('');
+
+  // A viewer only ever sees their own loans - the API enforces this too, so the
+  // filter here is about what the UI asks for, not the guarantee.
+  const scopedMemberId = isAdmin ? filterMemberId : ownMemberId;
 
   const refresh = useCallback(async () => {
-    const res = await personalLoanService.getAll();
+    const params = scopedMemberId ? { member_id: Number(scopedMemberId) } : undefined;
+    const res = await personalLoanService.getAll(params);
     setLoans(res.data || []);
-  }, []);
+  }, [scopedMemberId]);
 
   useEffect(() => {
     refresh();
@@ -42,20 +54,6 @@ function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
       setError(err.response?.data?.error || 'Failed to disburse personal loan');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleRepay = async (loanId) => {
-    const interestAmount = Number(repayInputs[loanId] || 0);
-    try {
-      setError('');
-      await personalLoanService.repay(loanId, {
-        meeting_id: selectedMeetingId,
-        interest_amount: interestAmount,
-      });
-      await refresh();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to record repayment');
     }
   };
 
@@ -103,39 +101,98 @@ function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
     }
   };
 
-  const outstanding = loans.filter((l) => l.status === 'outstanding');
-  const repaid = loans.filter((l) => l.status === 'repaid');
+  const meetingKey = (id) => {
+    const m = (meetings || []).find((mm) => mm.id === id);
+    return m ? m.year * 12 + m.month : null;
+  };
+  const selectedKey = meetingKey(selectedMeetingId);
+
+  // Show a loan only in the months it was actually running: from the month it was
+  // disbursed through the month it was repaid. A loan disbursed in July shouldn't appear
+  // while looking at April/May/June, and one repaid in September shouldn't appear from
+  // October onwards. An unrepaid loan keeps showing every month until it is repaid.
+  const visibleLoans = loans.filter((loan) => {
+    if (!selectedKey) return true;
+
+    const disbursedKey = meetingKey(loan.disbursed_meeting_id);
+    if (disbursedKey && disbursedKey > selectedKey) return false;
+
+    if (loan.status !== 'repaid') return true;
+
+    // Repaid loans still show in the month they were settled. If we can't tell which
+    // month that was, keep showing it rather than silently hiding history.
+    const repaidKey = meetingKey(loan.repaid_meeting_id);
+    return !repaidKey || repaidKey >= selectedKey;
+  });
+
+  // Which table a loan belongs in depends on the month being viewed, not on its status
+  // today - a loan repaid in September was still outstanding when looking at July.
+  const isRepaidAsOf = (loan) => {
+    if (loan.status !== 'repaid') return false;
+    const repaidKey = meetingKey(loan.repaid_meeting_id);
+    if (!repaidKey || !selectedKey) return true;
+    return repaidKey <= selectedKey;
+  };
+
+  const outstanding = visibleLoans.filter((l) => !isRepaidAsOf(l));
+  const repaid = visibleLoans.filter(isRepaidAsOf);
+
+  // Totals match the rows actually listed, so they respect the Member filter and
+  // the selected meeting's visibility window.
+  const sum = (rows, field) => rows.reduce((total, l) => total + Number(l[field] || 0), 0);
+  const outstandingTotal = sum(outstanding, 'amount');
+  const repaidTotal = sum(repaid, 'amount');
+  const repaidInterestTotal = sum(repaid, 'interest_amount');
 
   return (
     <>
-      <div className="card">
-        <h2>Disburse New Personal Loan (இந்த மாத தனிக்கடன்)</h2>
-        {error && <div className="alert alert-error">{error}</div>}
-        <form onSubmit={handleDisburse} className="inline-form">
-          <select value={memberId} onChange={(e) => setMemberId(e.target.value)} required>
-            <option value="">Select member</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            placeholder="Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-          />
-          <button type="submit" className="btn btn-primary" disabled={submitting || !selectedMeetingId}>
-            {submitting ? 'Disbursing...' : 'Disburse in selected meeting'}
-          </button>
-        </form>
-      </div>
+      {canEdit && (
+        <div className="card">
+          <h2>Disburse New Personal Loan (இந்த மாத தனிக்கடன்)</h2>
+          {error && <div className="alert alert-error">{error}</div>}
+          <form onSubmit={handleDisburse} className="inline-form">
+            <select value={memberId} onChange={(e) => setMemberId(e.target.value)} required>
+              <option value="">Select member</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              placeholder="Amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn btn-primary" disabled={submitting || !selectedMeetingId}>
+              {submitting ? 'Disbursing...' : 'Disburse in selected meeting'}
+            </button>
+          </form>
+        </div>
+      )}
 
       <div className="card">
-        <h2>Outstanding Personal Loans (due to be repaid next meeting)</h2>
-        {outstanding.length === 0 ? (
+        <div className="summary-header-row">
+          <h2>Outstanding Personal Loans (due to be repaid next meeting)</h2>
+          {isAdmin && (
+            <div className="month-filter-row">
+              <label>Member:</label>
+              <select value={filterMemberId} onChange={(e) => setFilterMemberId(e.target.value)}>
+                <option value="">All members</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        {!isAdmin && !ownMemberId ? (
+          <p>This login isn't linked to a member yet, so there are no loans to show. Ask the admin to link it.</p>
+        ) : outstanding.length === 0 ? (
           <p>None outstanding.</p>
         ) : (
           <table className="table">
@@ -143,8 +200,7 @@ function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
               <tr>
                 <th>Member</th>
                 <th>Amount</th>
-                <th>Repay Interest</th>
-                <th></th>
+                {canEdit && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -168,33 +224,26 @@ function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
                     ) : (
                       <div className="inline-form">
                         ₹{Number(loan.amount).toFixed(2)}
-                        <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEditAmount(loan)} />
+                        {canEdit && (
+                          <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEditAmount(loan)} />
+                        )}
                       </div>
                     )}
                   </td>
-                  <td>
-                    <input
-                      type="number"
-                      placeholder="Interest"
-                      value={repayInputs[loan.id] || ''}
-                      onChange={(e) => setRepayInputs({ ...repayInputs, [loan.id]: e.target.value })}
-                      style={{ width: 100 }}
-                    />
-                  </td>
-                  <td>
-                    <div className="icon-btn-group">
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleRepay(loan.id)}
-                        disabled={!selectedMeetingId}
-                      >
-                        Mark Repaid in Selected Meeting
-                      </button>
-                      <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(loan)} />
-                    </div>
-                  </td>
+                  {canEdit && (
+                    <td>
+                      <div className="icon-btn-group">
+                        <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(loan)} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
+              <tr>
+                <td className="font-weight-bold">Total ({outstanding.length})</td>
+                <td className="font-weight-bold">₹{outstandingTotal.toFixed(2)}</td>
+                {canEdit && <td></td>}
+              </tr>
             </tbody>
           </table>
         )}
@@ -211,7 +260,7 @@ function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
                 <th>Member</th>
                 <th>Amount</th>
                 <th>Interest</th>
-                <th></th>
+                {canEdit && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -236,23 +285,33 @@ function MandramPersonalLoans({ members, meetings, selectedMeetingId }) {
                     ) : (
                       <div className="inline-form">
                         ₹{Number(loan.interest_amount || 0).toFixed(2)}
-                        <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEditAmount(loan)} />
+                        {canEdit && (
+                          <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEditAmount(loan)} />
+                        )}
                       </div>
                     )}
                   </td>
-                  <td>
-                    <div className="icon-btn-group">
-                      <IconButton
-                        icon={RotateCcw}
-                        variant="revert"
-                        title="Revert to Outstanding"
-                        onClick={() => handleRevert(loan.id)}
-                      />
-                      <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(loan)} />
-                    </div>
-                  </td>
+                  {canEdit && (
+                    <td>
+                      <div className="icon-btn-group">
+                        <IconButton
+                          icon={RotateCcw}
+                          variant="revert"
+                          title="Revert to Outstanding"
+                          onClick={() => handleRevert(loan.id)}
+                        />
+                        <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(loan)} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
+              <tr>
+                <td className="font-weight-bold">Total ({repaid.length})</td>
+                <td className="font-weight-bold">₹{repaidTotal.toFixed(2)}</td>
+                <td className="font-weight-bold">₹{repaidInterestTotal.toFixed(2)}</td>
+                {canEdit && <td></td>}
+              </tr>
             </tbody>
           </table>
         )}

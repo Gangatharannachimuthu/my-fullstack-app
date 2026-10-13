@@ -1,9 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { meetingService, loanService, personalLoanService, penaltyService } from '../../services/mandramApi';
+import { Check, MessageCircle, Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+  meetingService,
+  loanService,
+  personalLoanService,
+  penaltyService,
+  messageService,
+  joiningService,
+} from '../../services/mandramApi';
 import IconButton from './IconButton';
+import LoanReminderDialog from './LoanReminderDialog';
 
-function MandramLedger({ meetingId, members }) {
+function MandramLedger({ meetingId, members, canEdit = true, isAdmin = false }) {
+  const [reminders, setReminders] = useState(null);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+  // Joining dues only apply to members who joined after the group was established,
+  // so this is empty for most mandrams and the column simply shows a dash.
+  const [dues, setDues] = useState([]);
+  const [joiningPaid, setJoiningPaid] = useState({});
+  const [joiningInputs, setJoiningInputs] = useState({});
   const [ledger, setLedger] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -15,8 +30,6 @@ function MandramLedger({ meetingId, members }) {
   const [emiPrincipalEditValue, setEmiPrincipalEditValue] = useState('');
   const [personalLoanEditingFor, setPersonalLoanEditingFor] = useState(null);
   const [personalLoanEditValue, setPersonalLoanEditValue] = useState('');
-  const [newLoanInputs, setNewLoanInputs] = useState({});
-  const [newLoanOpenFor, setNewLoanOpenFor] = useState(null);
   const [repayInputs, setRepayInputs] = useState({});
   const [penaltyInputs, setPenaltyInputs] = useState({});
   const [penaltyOpenFor, setPenaltyOpenFor] = useState(null);
@@ -30,8 +43,17 @@ function MandramLedger({ meetingId, members }) {
     }
     setLoading(true);
     try {
-      const res = await meetingService.getLedger(meetingId);
+      const [res, duesRes, paidRes] = await Promise.all([
+        meetingService.getLedger(meetingId),
+        joiningService.getDues(),
+        joiningService.getForMeeting(meetingId),
+      ]);
       setLedger(res.data);
+      setDues(duesRes.data || []);
+      setJoiningPaid(
+        Object.fromEntries((paidRes.data || []).map((p) => [p.member_id, p.amount]))
+      );
+      setJoiningInputs({});
       setError('');
     } catch (err) {
       setError('Failed to load ledger for this meeting');
@@ -56,19 +78,35 @@ function MandramLedger({ meetingId, members }) {
     }
   };
 
-  const startEmiEdit = (row) => {
-    setEmiEditingFor(row.member_id);
+  const dueFor = (memberId) => dues.find((d) => d.member_id === memberId) || null;
+
+  const saveJoining = async (memberId) => {
+    const amount = joiningInputs[memberId];
+    if (amount === undefined || amount === '') return;
+    try {
+      setError('');
+      await joiningService.pay(meetingId, { member_id: memberId, amount: Number(amount) });
+      await refresh();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save joining payment');
+    }
+  };
+
+  // EMI state is keyed by loan_id, not member_id: a member can have more than one
+  // loan in the same month, and editing one must not disturb the other.
+  const startEmiEdit = (loan) => {
+    setEmiEditingFor(loan.loan_id);
     setEmiInputs({
       ...emiInputs,
-      [row.member_id]: {
-        installment: row.emi_loan.installment_paid,
-        interest: row.emi_loan.interest_paid,
+      [loan.loan_id]: {
+        installment: loan.installment_paid,
+        interest: loan.interest_paid,
       },
     });
   };
 
-  const savePayment = async (loanId, memberId, isEdit) => {
-    const values = emiInputs[memberId] || {};
+  const savePayment = async (loanId, isEdit) => {
+    const values = emiInputs[loanId] || {};
     try {
       setError('');
       const payload = {
@@ -98,9 +136,9 @@ function MandramLedger({ meetingId, members }) {
     }
   };
 
-  const startEmiPrincipalEdit = (row) => {
-    setEmiPrincipalEditingFor(row.member_id);
-    setEmiPrincipalEditValue(row.emi_loan.principal_amount);
+  const startEmiPrincipalEdit = (loan) => {
+    setEmiPrincipalEditingFor(loan.loan_id);
+    setEmiPrincipalEditValue(loan.principal_amount);
   };
 
   const saveEmiPrincipalEdit = async (loanId) => {
@@ -128,33 +166,38 @@ function MandramLedger({ meetingId, members }) {
     }
   };
 
-  const startPersonalLoanEdit = (row) => {
-    setPersonalLoanEditingFor(row.member_id);
-    if (row.personal_loan_repaid) {
-      setPersonalLoanEditValue(row.personal_loan_repaid.interest_amount || 0);
-    } else if (row.personal_loan_new) {
-      setPersonalLoanEditValue(row.personal_loan_new.amount || 0);
-    } else if (row.personal_loan_pending) {
-      setPersonalLoanEditValue(row.personal_loan_pending.amount || 0);
-    }
+  /**
+   * The personal-loan states that apply to this member this month, oldest event
+   * first. A member can both clear a loan and take a new one in the same meeting,
+   * so this is a list, not a single state - exactly as EMI loans already are.
+   */
+  const personalLoanBlocks = (row) => {
+    const blocks = [];
+    if (row.personal_loan_repaid) blocks.push({ kind: 'repaid', loan: row.personal_loan_repaid });
+    if (row.personal_loan_new) blocks.push({ kind: 'new', loan: row.personal_loan_new });
+    if (row.personal_loan_pending) blocks.push({ kind: 'pending', loan: row.personal_loan_pending });
+    return blocks;
   };
 
-  const savePersonalLoanEdit = async (row) => {
+  // Keyed by personal_loan_id, not member_id: with two loans in one row, editing
+  // one must not open or overwrite the other.
+  const startPersonalLoanEdit = (kind, loan) => {
+    setPersonalLoanEditingFor(loan.personal_loan_id);
+    setPersonalLoanEditValue(
+      kind === 'repaid' ? loan.interest_amount || 0 : loan.amount || 0
+    );
+  };
+
+  const savePersonalLoanEdit = async (kind, loan) => {
     try {
       setError('');
-      if (row.personal_loan_repaid) {
-        await personalLoanService.update(row.personal_loan_repaid.personal_loan_id, {
-          interest_amount: Number(personalLoanEditValue),
-        });
-      } else if (row.personal_loan_new) {
-        await personalLoanService.update(row.personal_loan_new.personal_loan_id, {
-          amount: Number(personalLoanEditValue),
-        });
-      } else if (row.personal_loan_pending) {
-        await personalLoanService.update(row.personal_loan_pending.personal_loan_id, {
-          amount: Number(personalLoanEditValue),
-        });
-      }
+      // On a repaid loan the editable figure is its interest; on one still running
+      // it is the principal.
+      const payload =
+        kind === 'repaid'
+          ? { interest_amount: Number(personalLoanEditValue) }
+          : { amount: Number(personalLoanEditValue) };
+      await personalLoanService.update(loan.personal_loan_id, payload);
       setPersonalLoanEditingFor(null);
       await refresh();
     } catch (err) {
@@ -170,24 +213,6 @@ function MandramLedger({ meetingId, members }) {
       await refresh();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to remove personal loan');
-    }
-  };
-
-  const disburseNewLoan = async (memberId) => {
-    const amount = newLoanInputs[memberId];
-    if (!amount) return;
-    try {
-      setError('');
-      await personalLoanService.disburse({
-        member_id: memberId,
-        amount: Number(amount),
-        disbursed_meeting_id: meetingId,
-      });
-      setNewLoanOpenFor(null);
-      setNewLoanInputs({ ...newLoanInputs, [memberId]: '' });
-      await refresh();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to disburse personal loan');
     }
   };
 
@@ -261,11 +286,25 @@ function MandramLedger({ meetingId, members }) {
     );
   }
 
+  const openReminders = async () => {
+    setRemindersLoading(true);
+    setError('');
+    try {
+      const res = await messageService.getLoanReminders(meetingId);
+      setReminders(res.data || []);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to build loan reminders');
+    } finally {
+      setRemindersLoading(false);
+    }
+  };
+
   if (loading) return <p>Loading ledger...</p>;
   if (!ledger) return <p>No data.</p>;
 
   const rows = ledger.rows.filter((row) => !memberFilter || row.member_id === Number(memberFilter));
   const isFinalized = ledger.meeting.status === 'finalized';
+  const editable = canEdit && !isFinalized;
 
   return (
     <div className="card">
@@ -281,11 +320,31 @@ function MandramLedger({ meetingId, members }) {
               </option>
             ))}
           </select>
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn btn-primary btn-with-icon"
+              onClick={openReminders}
+              disabled={remindersLoading}
+              title="Send each member their loan position for this month"
+            >
+              <MessageCircle size={16} />
+              {remindersLoading ? 'Preparing...' : 'Send Loan Reminders'}
+            </button>
+          )}
         </div>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
       {isFinalized && <div className="alert" style={{ background: '#eef2ff', color: '#4338ca' }}>This meeting is finalized (read-only).</div>}
+
+      {reminders && (
+        <LoanReminderDialog
+          meetingLabel={`${ledger.meeting.month}/${ledger.meeting.year}`}
+          reminders={reminders}
+          onClose={() => setReminders(null)}
+        />
+      )}
 
       <div className="table-wrap">
         <table className="table">
@@ -293,6 +352,7 @@ function MandramLedger({ meetingId, members }) {
             <tr>
               <th>Member</th>
               <th>Share Amount</th>
+              <th>Joining Contribution</th>
               <th>EMI Loan (Installment / Interest / Outstanding)</th>
               <th>Personal Loan (Given / Repaid)</th>
               <th>Penalty</th>
@@ -303,7 +363,7 @@ function MandramLedger({ meetingId, members }) {
               <tr key={row.member_id}>
                 <td>{row.member_name}</td>
                 <td>
-                  {isFinalized ? (
+                  {!editable ? (
                     row.share_amount != null ? `₹${row.share_amount.toFixed(2)}` : '-'
                   ) : (
                     <div className="inline-form">
@@ -319,224 +379,261 @@ function MandramLedger({ meetingId, members }) {
                   )}
                 </td>
                 <td>
-                  {!row.emi_loan ? (
-                    <span style={{ color: '#94a3b8' }}>No active loan</span>
-                  ) : row.emi_loan.just_given ? (
-                    emiPrincipalEditingFor === row.member_id ? (
-                      <div className="inline-form">
-                        <input
-                          type="number"
-                          style={{ width: 90 }}
-                          value={emiPrincipalEditValue}
-                          onChange={(e) => setEmiPrincipalEditValue(e.target.value)}
-                        />
-                        <div className="icon-btn-group">
-                          <IconButton
-                            icon={Check}
-                            variant="save"
-                            title="Save"
-                            onClick={() => saveEmiPrincipalEdit(row.emi_loan.loan_id)}
-                          />
-                          <IconButton
-                            icon={X}
-                            variant="cancel"
-                            title="Cancel"
-                            onClick={() => setEmiPrincipalEditingFor(null)}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="inline-form">
-                        <span>Given ₹{row.emi_loan.principal_amount.toFixed(2)} (due from next month)</span>
-                        {!isFinalized && (
-                          <div className="icon-btn-group">
-                            <IconButton
-                              icon={Pencil}
-                              variant="edit"
-                              title="Edit"
-                              onClick={() => startEmiPrincipalEdit(row)}
+                  {(() => {
+                    const due = dueFor(row.member_id);
+                    if (!due) return <span style={{ color: '#94a3b8' }}>—</span>;
+                    const paidThisMonth = joiningPaid[row.member_id];
+                    return (
+                      <div className="joining-cell">
+                        {editable ? (
+                          <div className="inline-form">
+                            <input
+                              type="number"
+                              style={{ width: 90 }}
+                              placeholder={paidThisMonth != null ? String(paidThisMonth) : '0'}
+                              value={joiningInputs[row.member_id] ?? ''}
+                              onChange={(e) =>
+                                setJoiningInputs({ ...joiningInputs, [row.member_id]: e.target.value })
+                              }
                             />
                             <IconButton
-                              icon={Trash2}
-                              variant="remove"
-                              title="Remove"
-                              onClick={() => removeEmiLoan(row.emi_loan.loan_id)}
+                              icon={Check}
+                              variant="save"
+                              title="Save joining payment"
+                              onClick={() => saveJoining(row.member_id)}
                             />
                           </div>
+                        ) : (
+                          <span>{paidThisMonth != null ? `₹${Number(paidThisMonth).toFixed(2)}` : '-'}</span>
                         )}
+                        <span className={`badge ${due.is_cleared ? 'badge-success' : 'badge-warning'}`}>
+                          {due.is_cleared
+                            ? 'fully paid'
+                            : `₹${Number(due.remaining).toFixed(0)} left of ₹${Number(due.total_amount).toFixed(0)}`}
+                        </span>
                       </div>
-                    )
-                  ) : row.emi_loan.installment_paid != null && emiEditingFor !== row.member_id ? (
-                    <div className="inline-form">
-                      <span>
-                        ₹{row.emi_loan.installment_paid.toFixed(2)} / ₹{row.emi_loan.interest_paid.toFixed(2)} / bal ₹
-                        {row.emi_loan.outstanding_balance.toFixed(2)}
-                      </span>
-                      {!isFinalized && (
-                        <div className="icon-btn-group">
-                          <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEmiEdit(row)} />
-                          <IconButton
-                            icon={Trash2}
-                            variant="remove"
-                            title="Remove"
-                            onClick={() => removePayment(row.emi_loan.loan_id)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : isFinalized ? (
-                    <span style={{ color: '#94a3b8' }}>Not paid</span>
-                  ) : (
-                    <div className="inline-form">
-                      <input
-                        type="number"
-                        placeholder="Installment"
-                        style={{ width: 90 }}
-                        value={emiInputs[row.member_id]?.installment ?? ''}
-                        onChange={(e) =>
-                          setEmiInputs({
-                            ...emiInputs,
-                            [row.member_id]: { ...emiInputs[row.member_id], installment: e.target.value },
-                          })
-                        }
-                      />
-                      <input
-                        type="number"
-                        placeholder="Interest"
-                        style={{ width: 80 }}
-                        value={emiInputs[row.member_id]?.interest ?? ''}
-                        onChange={(e) =>
-                          setEmiInputs({
-                            ...emiInputs,
-                            [row.member_id]: { ...emiInputs[row.member_id], interest: e.target.value },
-                          })
-                        }
-                      />
-                      <div className="icon-btn-group">
-                        <IconButton
-                          icon={Check}
-                          variant="save"
-                          title="Save"
-                          onClick={() => savePayment(row.emi_loan.loan_id, row.member_id, row.emi_loan.installment_paid != null)}
-                        />
-                        {emiEditingFor === row.member_id && (
-                          <IconButton icon={X} variant="cancel" title="Cancel" onClick={() => setEmiEditingFor(null)} />
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </td>
                 <td>
-                  {row.personal_loan_repaid || row.personal_loan_new || row.personal_loan_pending ? (
-                    personalLoanEditingFor === row.member_id ? (
-                      <div className="inline-form">
-                        <input
-                          type="number"
-                          style={{ width: 80 }}
-                          value={personalLoanEditValue}
-                          onChange={(e) => setPersonalLoanEditValue(e.target.value)}
-                        />
-                        <div className="icon-btn-group">
-                          <IconButton icon={Check} variant="save" title="Save" onClick={() => savePersonalLoanEdit(row)} />
-                          <IconButton
-                            icon={X}
-                            variant="cancel"
-                            title="Cancel"
-                            onClick={() => setPersonalLoanEditingFor(null)}
-                          />
-                        </div>
-                      </div>
-                    ) : row.personal_loan_repaid ? (
-                      <div className="inline-form">
-                        <span>
-                          Repaid ₹{row.personal_loan_repaid.amount.toFixed(2)} / ₹
-                          {(row.personal_loan_repaid.interest_amount || 0).toFixed(2)}
-                        </span>
-                        {!isFinalized && (
-                          <div className="icon-btn-group">
-                            <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startPersonalLoanEdit(row)} />
-                            <IconButton
-                              icon={Trash2}
-                              variant="remove"
-                              title="Remove"
-                              onClick={() => removePersonalLoan(row.personal_loan_repaid.personal_loan_id)}
-                            />
+                  {row.emi_loans.length === 0 ? (
+                    <span style={{ color: '#94a3b8' }}>No active loan</span>
+                  ) : (
+                    <div className="emi-loan-stack">
+                      {row.emi_loans.map((loan) =>
+                        loan.just_given ? (
+                          emiPrincipalEditingFor === loan.loan_id ? (
+                            <div className="inline-form" key={loan.loan_id}>
+                              <input
+                                type="number"
+                                style={{ width: 90 }}
+                                value={emiPrincipalEditValue}
+                                onChange={(e) => setEmiPrincipalEditValue(e.target.value)}
+                              />
+                              <div className="icon-btn-group">
+                                <IconButton
+                                  icon={Check}
+                                  variant="save"
+                                  title="Save"
+                                  onClick={() => saveEmiPrincipalEdit(loan.loan_id)}
+                                />
+                                <IconButton
+                                  icon={X}
+                                  variant="cancel"
+                                  title="Cancel"
+                                  onClick={() => setEmiPrincipalEditingFor(null)}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="inline-form" key={loan.loan_id}>
+                              <span>Given ₹{loan.principal_amount.toFixed(2)} (due from next month)</span>
+                              {editable && (
+                                <div className="icon-btn-group">
+                                  <IconButton
+                                    icon={Pencil}
+                                    variant="edit"
+                                    title="Edit"
+                                    onClick={() => startEmiPrincipalEdit(loan)}
+                                  />
+                                  <IconButton
+                                    icon={Trash2}
+                                    variant="remove"
+                                    title="Remove"
+                                    onClick={() => removeEmiLoan(loan.loan_id)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        ) : loan.installment_paid != null && emiEditingFor !== loan.loan_id ? (
+                          <div className="inline-form" key={loan.loan_id}>
+                            <span>
+                              ₹{loan.installment_paid.toFixed(2)} / ₹{loan.interest_paid.toFixed(2)} / bal ₹
+                              {loan.outstanding_balance.toFixed(2)}
+                            </span>
+                            {loan.closed_this_month && (
+                              <span className="badge badge-success">Loan closed this month</span>
+                            )}
+                            {editable && (
+                              <div className="icon-btn-group">
+                                <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startEmiEdit(loan)} />
+                                <IconButton
+                                  icon={Trash2}
+                                  variant="remove"
+                                  title="Remove"
+                                  onClick={() => removePayment(loan.loan_id)}
+                                />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ) : row.personal_loan_new ? (
-                      <div className="inline-form">
-                        <span>Given ₹{row.personal_loan_new.amount.toFixed(2)} (due next meeting)</span>
-                        {!isFinalized && (
-                          <div className="icon-btn-group">
-                            <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startPersonalLoanEdit(row)} />
-                            <IconButton
-                              icon={Trash2}
-                              variant="remove"
-                              title="Remove"
-                              onClick={() => removePersonalLoan(row.personal_loan_new.personal_loan_id)}
+                        ) : !editable ? (
+                          <span style={{ color: '#94a3b8' }} key={loan.loan_id}>
+                            Not paid
+                          </span>
+                        ) : (
+                          <div className="inline-form" key={loan.loan_id}>
+                            <input
+                              type="number"
+                              placeholder="Installment"
+                              style={{ width: 90 }}
+                              value={emiInputs[loan.loan_id]?.installment ?? ''}
+                              onChange={(e) =>
+                                setEmiInputs({
+                                  ...emiInputs,
+                                  [loan.loan_id]: { ...emiInputs[loan.loan_id], installment: e.target.value },
+                                })
+                              }
                             />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="inline-form">
-                        <span style={{ color: '#b45309' }}>
-                          Pending ₹{row.personal_loan_pending.amount.toFixed(2)} (from earlier month)
-                        </span>
-                        {!isFinalized && (
-                          <>
                             <input
                               type="number"
                               placeholder="Interest"
                               style={{ width: 80 }}
-                              value={repayInputs[row.member_id] || ''}
-                              onChange={(e) => setRepayInputs({ ...repayInputs, [row.member_id]: e.target.value })}
+                              value={emiInputs[loan.loan_id]?.interest ?? ''}
+                              onChange={(e) =>
+                                setEmiInputs({
+                                  ...emiInputs,
+                                  [loan.loan_id]: { ...emiInputs[loan.loan_id], interest: e.target.value },
+                                })
+                              }
+                            />
+                            <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                              bal ₹{loan.outstanding_balance.toFixed(2)}
+                            </span>
+                            <div className="icon-btn-group">
+                              <IconButton
+                                icon={Check}
+                                variant="save"
+                                title="Save"
+                                onClick={() => savePayment(loan.loan_id, loan.installment_paid != null)}
+                              />
+                              {emiEditingFor === loan.loan_id && (
+                                <IconButton
+                                  icon={X}
+                                  variant="cancel"
+                                  title="Cancel"
+                                  onClick={() => setEmiEditingFor(null)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td>
+                  {personalLoanBlocks(row).length === 0 ? (
+                    // Giving a personal loan belongs on the Personal Loans tab, the same
+                    // way opening an EMI loan does. The ledger only records what happens
+                    // to a loan month by month.
+                    <span style={{ color: '#94a3b8' }}>No personal loan</span>
+                  ) : (
+                    <div className="emi-loan-stack">
+                      {personalLoanBlocks(row).map(({ kind, loan }) =>
+                        personalLoanEditingFor === loan.personal_loan_id ? (
+                          <div className="inline-form" key={loan.personal_loan_id}>
+                            <input
+                              type="number"
+                              style={{ width: 80 }}
+                              value={personalLoanEditValue}
+                              onChange={(e) => setPersonalLoanEditValue(e.target.value)}
                             />
                             <div className="icon-btn-group">
-                              <IconButton icon={Check} variant="save" title="Mark Repaid" onClick={() => repayPending(row)} />
-                              <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startPersonalLoanEdit(row)} />
                               <IconButton
-                                icon={Trash2}
-                                variant="remove"
-                                title="Remove"
-                                onClick={() => removePersonalLoan(row.personal_loan_pending.personal_loan_id)}
+                                icon={Check}
+                                variant="save"
+                                title="Save"
+                                onClick={() => savePersonalLoanEdit(kind, loan)}
+                              />
+                              <IconButton
+                                icon={X}
+                                variant="cancel"
+                                title="Cancel"
+                                onClick={() => setPersonalLoanEditingFor(null)}
                               />
                             </div>
-                          </>
-                        )}
-                      </div>
-                    )
-                  ) : !isFinalized ? (
-                    newLoanOpenFor === row.member_id ? (
-                      <div className="inline-form">
-                        <input
-                          type="number"
-                          placeholder="Amount"
-                          style={{ width: 90 }}
-                          value={newLoanInputs[row.member_id] ?? ''}
-                          onChange={(e) => setNewLoanInputs({ ...newLoanInputs, [row.member_id]: e.target.value })}
-                        />
-                        <div className="icon-btn-group">
-                          <IconButton
-                            icon={Check}
-                            variant="save"
-                            title="Give Loan"
-                            onClick={() => disburseNewLoan(row.member_id)}
-                          />
-                          <IconButton icon={X} variant="cancel" title="Cancel" onClick={() => setNewLoanOpenFor(null)} />
-                        </div>
-                      </div>
-                    ) : (
-                      <IconButton
-                        icon={Plus}
-                        variant="add"
-                        title="Give New Personal Loan"
-                        onClick={() => setNewLoanOpenFor(row.member_id)}
-                      />
-                    )
-                  ) : (
-                    <span style={{ color: '#94a3b8' }}>-</span>
+                          </div>
+                        ) : (
+                          <div className="inline-form" key={loan.personal_loan_id}>
+                            {kind === 'repaid' && (
+                              <>
+                                <span>
+                                  Repaid ₹{loan.amount.toFixed(2)} / ₹
+                                  {(loan.interest_amount || 0).toFixed(2)}
+                                </span>
+                                <span className="badge badge-success">Loan closed this month</span>
+                              </>
+                            )}
+                            {kind === 'new' && (
+                              <span>Given ₹{loan.amount.toFixed(2)} (due next meeting)</span>
+                            )}
+                            {kind === 'pending' && (
+                              <span style={{ color: '#b45309' }}>
+                                Pending ₹{loan.amount.toFixed(2)} (from earlier month)
+                              </span>
+                            )}
+                            {editable && (
+                              <>
+                                {kind === 'pending' && (
+                                  <input
+                                    type="number"
+                                    placeholder="Interest"
+                                    style={{ width: 80 }}
+                                    value={repayInputs[row.member_id] || ''}
+                                    onChange={(e) =>
+                                      setRepayInputs({ ...repayInputs, [row.member_id]: e.target.value })
+                                    }
+                                  />
+                                )}
+                                <div className="icon-btn-group">
+                                  {kind === 'pending' && (
+                                    <IconButton
+                                      icon={Check}
+                                      variant="save"
+                                      title="Mark Repaid"
+                                      onClick={() => repayPending(row)}
+                                    />
+                                  )}
+                                  <IconButton
+                                    icon={Pencil}
+                                    variant="edit"
+                                    title={kind === 'repaid' ? 'Edit interest' : 'Edit amount'}
+                                    onClick={() => startPersonalLoanEdit(kind, loan)}
+                                  />
+                                  <IconButton
+                                    icon={Trash2}
+                                    variant="remove"
+                                    title="Remove"
+                                    onClick={() => removePersonalLoan(loan.personal_loan_id)}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
                   )}
                 </td>
                 <td>
@@ -563,7 +660,7 @@ function MandramLedger({ meetingId, members }) {
                     ) : (
                       <div className="inline-form" key={p.id} style={{ marginBottom: 4 }} title={p.reason}>
                         <span>₹{p.amount.toFixed(2)}</span>
-                        {!isFinalized && (
+                        {editable && (
                           <div className="icon-btn-group">
                             <IconButton icon={Pencil} variant="edit" title="Edit" onClick={() => startPenaltyEdit(p)} />
                             <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => removePenalty(p.id)} />
@@ -572,7 +669,7 @@ function MandramLedger({ meetingId, members }) {
                       </div>
                     )
                   )}
-                  {!isFinalized &&
+                  {editable &&
                     (penaltyOpenFor === row.member_id ? (
                       <div className="inline-form">
                         <input

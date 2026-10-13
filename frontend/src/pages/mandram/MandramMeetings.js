@@ -8,12 +8,21 @@ function monthLabel(month, year) {
   return `${names[month]} ${year}`;
 }
 
-function MandramMeetings({ meetings, onChanged }) {
+function MandramMeetings({ meetings, onChanged, canEdit = true }) {
   const [meetingDate, setMeetingDate] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+
+  // Derived from the meetings themselves, so a new year appears in the dropdown as
+  // soon as its first meeting is opened - nothing to hardcode or maintain.
+  const years = [...new Set(meetings.map((m) => m.year))].sort((a, b) => b - a);
+
+  const visibleMeetings = filterYear
+    ? meetings.filter((m) => String(m.year) === String(filterYear))
+    : meetings;
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -66,24 +75,46 @@ function MandramMeetings({ meetings, onChanged }) {
 
   return (
     <>
-      <div className="card">
-        <h2>Open a New Monthly Meeting</h2>
-        {error && <div className="alert alert-error">{error}</div>}
-        <form onSubmit={handleCreate} className="inline-form">
-          <input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} required />
-          <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? 'Creating...' : 'Open Meeting'}
-          </button>
-        </form>
-        <p style={{ color: '#64748b', fontSize: 13, marginTop: 10 }}>
-          Opening balance is the previous month's live running balance until that month is finalized.
-        </p>
-      </div>
+      {canEdit && (
+        <div className="card">
+          <h2>Open a New Monthly Meeting</h2>
+          {error && <div className="alert alert-error">{error}</div>}
+          <form onSubmit={handleCreate} className="inline-form">
+            <input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} required />
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Creating...' : 'Open Meeting'}
+            </button>
+          </form>
+          <p style={{ color: '#64748b', fontSize: 13, marginTop: 10 }}>
+            Opening balance is the previous month's live running balance until that month is finalized.
+          </p>
+        </div>
+      )}
 
       <div className="card">
-        <h2>Meetings</h2>
+        <div className="summary-header-row">
+          <h2>
+            Meetings ({visibleMeetings.length}
+            {filterYear ? ` of ${meetings.length}` : ''})
+          </h2>
+          {years.length > 0 && (
+            <div className="month-filter-row">
+              <label>Year:</label>
+              <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+                <option value="">All years</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
         {meetings.length === 0 ? (
           <p>No meetings recorded yet.</p>
+        ) : visibleMeetings.length === 0 ? (
+          <p>No meetings in {filterYear}.</p>
         ) : (
           <div className="table-wrap">
             <table className="table">
@@ -95,11 +126,11 @@ function MandramMeetings({ meetings, onChanged }) {
                   <th>Closing Balance</th>
                   <th>Trust Value</th>
                   <th>Status</th>
-                  <th></th>
+                  {canEdit && <th></th>}
                 </tr>
               </thead>
               <tbody>
-                {meetings.map((m) => (
+                {visibleMeetings.map((m) => (
                   <tr key={m.id}>
                     <td>{monthLabel(m.month, m.year)}</td>
                     <td>
@@ -117,21 +148,23 @@ function MandramMeetings({ meetings, onChanged }) {
                         {m.status}
                       </span>
                     </td>
-                    <td>
-                      {editingId === m.id ? (
-                        <div className="icon-btn-group">
-                          <IconButton icon={Check} variant="save" title="Save" onClick={() => saveEdit(m.id)} />
-                          <IconButton icon={X} variant="cancel" title="Cancel" onClick={cancelEdit} />
-                        </div>
-                      ) : (
-                        m.status !== 'finalized' && (
+                    {canEdit && (
+                      <td>
+                        {editingId === m.id ? (
                           <div className="icon-btn-group">
-                            <IconButton icon={Pencil} variant="edit" title="Edit date" onClick={() => startEdit(m)} />
-                            <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(m)} />
+                            <IconButton icon={Check} variant="save" title="Save" onClick={() => saveEdit(m.id)} />
+                            <IconButton icon={X} variant="cancel" title="Cancel" onClick={cancelEdit} />
                           </div>
-                        )
-                      )}
-                    </td>
+                        ) : (
+                          m.status !== 'finalized' && (
+                            <div className="icon-btn-group">
+                              <IconButton icon={Pencil} variant="edit" title="Edit date" onClick={() => startEdit(m)} />
+                              <IconButton icon={Trash2} variant="remove" title="Remove" onClick={() => handleDelete(m)} />
+                            </div>
+                          )
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

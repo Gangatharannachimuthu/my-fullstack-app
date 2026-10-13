@@ -1,14 +1,20 @@
 import React from 'react';
-import { LogOut, User } from 'lucide-react';
+import { Eye, LogOut, User } from 'lucide-react';
 import '../styles/Navbar.css';
 
-function Navbar({ userName, onLogout }) {
+function Navbar({ userName, role, onLogout }) {
   return (
     <nav className="navbar">
       <div className="navbar-left">
         <h2>Masiriyamman Mandram Ledger</h2>
       </div>
       <div className="navbar-right">
+        {role === 'viewer' && (
+          <div className="user-info" title="View-only access">
+            <Eye size={18} />
+            <span>View only</span>
+          </div>
+        )}
         <div className="user-info">
           <User size={18} />
           <span>{userName || 'User'}</span>

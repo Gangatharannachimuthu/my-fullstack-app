@@ -24,7 +24,7 @@ function SummaryTable({ title, rows, fullWidth }) {
   );
 }
 
-function MandramSummary({ meetingId, onFinalized }) {
+function MandramSummary({ meetingId, onFinalized, canEdit = true }) {
   const [summary, setSummary] = useState(null);
   const [meeting, setMeeting] = useState(null);
   const [error, setError] = useState('');
@@ -76,9 +76,11 @@ function MandramSummary({ meetingId, onFinalized }) {
     <div className="card">
       <div className="summary-header-row">
         <h2>Monthly Summary {meeting ? `— ${meeting.month}/${meeting.year}` : ''}</h2>
-        <button className="btn btn-primary" onClick={handleFinalize} disabled={isFinalized || finalizing}>
-          {isFinalized ? 'Already Finalized' : finalizing ? 'Finalizing...' : 'Finalize Month'}
-        </button>
+        {canEdit && (
+          <button className="btn btn-primary" onClick={handleFinalize} disabled={isFinalized || finalizing}>
+            {isFinalized ? 'Already Finalized' : finalizing ? 'Finalizing...' : 'Finalize Month'}
+          </button>
+        )}
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -89,7 +91,10 @@ function MandramSummary({ meetingId, onFinalized }) {
             { label: 'Share Contributions', value: summary.income.share_income },
             { label: 'EMI Loan Interest', value: summary.income.emi_loan_interest },
             { label: 'Personal Loan Interest', value: summary.income.personal_loan_interest },
+            { label: 'Penalties (அபராதம்)', value: summary.income.penalty_income },
             { label: 'Other Income', value: summary.income.other_income },
+            { label: 'Chit Commission / Dividend (கமிஷன்)', value: summary.total_investment_commission },
+            { label: 'Joining Contributions', value: summary.income.joining_collected },
             { label: 'Total Income', value: summary.income.total_income, highlight: true },
           ]}
         />
@@ -114,9 +119,11 @@ function MandramSummary({ meetingId, onFinalized }) {
             { label: '− New Personal Loans Given Out', value: -summary.new_personal_loans_disbursed },
             { label: '− Total Expenditure', value: -summary.expenditure.total_expenditure },
             { label: '− Investment / Savings (Gold, Chit, etc.)', value: -summary.total_investment_outflow },
+            { label: '+ Chit Amount Taken (சீட்டு தொகை)', value: summary.total_chit_taken },
             { label: '= Current Month Total Balance', value: summary.closing_balance, highlight: true },
             { label: 'Outstanding EMI Loans (not yet collected)', value: summary.outstanding_emi_loans },
             { label: 'Outstanding Personal Loans (not yet collected)', value: summary.outstanding_personal_loans },
+            { label: 'Investments Held (chits, gold, deposits)', value: summary.investments_held },
             { label: 'Mandram Total Value', value: summary.trust_total_value, highlight: true },
           ]}
         />
