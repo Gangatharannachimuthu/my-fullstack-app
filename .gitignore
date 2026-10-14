@@ -22,3 +22,13 @@ frontend/.DS_Store
 # System
 .DS_Store
 Thumbs.db
+
+# Sri Saravana Bricks app
+saravana-bricks/backend/venv/
+saravana-bricks/backend/.env
+saravana-bricks/backend/**/__pycache__/
+saravana-bricks/backend/.pytest_cache/
+saravana-bricks/frontend/node_modules/
+saravana-bricks/frontend/dist/
+saravana-bricks/backend/backups/
+saravana-bricks/backend/logs/

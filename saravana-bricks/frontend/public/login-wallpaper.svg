@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <!-- Original illustration of a laid interlock-paver yard for this app.
+       Replace with a photo by dropping login-wallpaper.jpg in /public and
+       changing the login-wallpaper variable in src/styles.css. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3c98b"/>
+      <stop offset="0.55" stop-color="#d9874f"/>
+      <stop offset="1" stop-color="#8f3a22"/>
+    </linearGradient>
+    <linearGradient id="brick" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c8643a"/>
+      <stop offset="1" stop-color="#9c4325"/>
+    </linearGradient>
+    <linearGradient id="brick2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a9a29a"/>
+      <stop offset="1" stop-color="#7e766d"/>
+    </linearGradient>
+    <!-- Zig-zag interlock paver shape, tiled -->
+    <pattern id="pavers" width="120" height="60" patternUnits="userSpaceOnUse" patternTransform="skewX(-28) scale(1 .6)">
+      <rect width="120" height="60" fill="#5b2a1a"/>
+      <path d="M3 3h24l8 8 8-8h14v24h-14l-8 8-8-8H3z" fill="url(#brick)"/>
+      <path d="M63 3h24l8 8 8-8h14v24h-14l-8 8-8-8H63z" fill="url(#brick2)"/>
+      <path d="M33 33h24l8 8 8-8h14v24h-14l-8 8-8-8H33z" fill="url(#brick)"/>
+      <path d="M-27 33h24l8 8 8-8h14v24h-14l-8 8-8-8h-24z" fill="url(#brick2)"/>
+      <path d="M93 33h24l8 8 8-8h14v24h-14l-8 8-8-8H93z" fill="url(#brick2)"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <circle cx="1240" cy="250" r="90" fill="#fde7b8" opacity=".85"/>
+
+  <!-- Factory shed and chimney on the horizon -->
+  <g fill="#6d2f1c" opacity=".9">
+    <rect x="180" y="380" width="360" height="170"/>
+    <path d="M160 390 360 300 560 390z"/>
+    <rect x="590" y="250" width="34" height="300"/>
+    <rect x="660" y="420" width="260" height="130"/>
+    <path d="M650 430l70-50 70 50 70-50 70 50z"/>
+  </g>
+  <g fill="#fbd9a6" opacity=".6">
+    <rect x="230" y="430" width="60" height="40"/><rect x="320" y="430" width="60" height="40"/><rect x="410" y="430" width="60" height="40"/>
+  </g>
+
+  <!-- Stacked pallets of bricks -->
+  <g>
+    <g fill="#b2552f" stroke="#5b2a1a" stroke-width="3">
+      <rect x="1000" y="470" width="80" height="34"/><rect x="1080" y="470" width="80" height="34"/><rect x="1160" y="470" width="80" height="34"/>
+      <rect x="1040" y="436" width="80" height="34"/><rect x="1120" y="436" width="80" height="34"/>
+      <rect x="1080" y="402" width="80" height="34"/>
+      <rect x="1280" y="470" width="80" height="34"/><rect x="1360" y="470" width="80" height="34"/>
+      <rect x="1320" y="436" width="80" height="34"/>
+    </g>
+    <rect x="990" y="504" width="460" height="14" fill="#4a2214"/>
+  </g>
+
+  <!-- Paved yard in perspective -->
+  <rect y="540" width="1600" height="460" fill="url(#pavers)"/>
+  <rect y="540" width="1600" height="460" fill="#000" opacity=".12"/>
+</svg>
