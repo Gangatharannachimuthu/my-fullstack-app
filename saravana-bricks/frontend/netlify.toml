@@ -1,0 +1,24 @@
+# Netlify hosts only the React frontend. Set the site's Base directory to
+# saravana-bricks/frontend in the Netlify UI; the paths below are relative to it.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Proxy API calls to the Flask backend on Render. The browser sees one origin,
+# so the HttpOnly SameSite=Lax session cookie works without CORS (same idea as
+# the Vite dev proxy). Change the URL if the Render service has a different name.
+[[redirects]]
+  from = "/api/*"
+  to = "https://saravana-bricks.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# React Router: serve index.html for page routes such as /orders/5.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
