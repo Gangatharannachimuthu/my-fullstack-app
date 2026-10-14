@@ -17,9 +17,12 @@ function Test-AppUp {
     try { (Invoke-RestMethod "$Url/api/health" -TimeoutSec 2).status -eq 'healthy' } catch { $false }
 }
 
-# 1. MySQL must be running (it normally starts with Windows).
+# 1. Only a database on this computer needs the local MySQL service; a cloud
+#    database (Aiven) just needs an internet connection.
+$dbLine = Get-Content (Join-Path $Backend '.env') -ErrorAction SilentlyContinue | Where-Object { $_ -match '^DATABASE_URL=' } | Select-Object -First 1
+$usesLocalDb = (-not $dbLine) -or ($dbLine -match '@(localhost|127\.0\.0\.1)[:/]')
 $mysql = Get-Service | Where-Object { $_.Name -like 'MySQL*' } | Select-Object -First 1
-if ($mysql -and $mysql.Status -ne 'Running') {
+if ($usesLocalDb -and $mysql -and $mysql.Status -ne 'Running') {
     try { Start-Service $mysql.Name } catch {
         Show-Error "The MySQL database service ($($mysql.Name)) is not running and could not be started.`n`nStart it from Windows Services, then try again."
     }
@@ -41,7 +44,8 @@ if (-not (Test-AppUp)) {
     $deadline = (Get-Date).AddSeconds(30)
     while (-not (Test-AppUp)) {
         if ((Get-Date) -gt $deadline) {
-            Show-Error "The app did not start within 30 seconds.`n`nDetails are in:`n$Backend\logs\server.log"
+            $hint = if ($usesLocalDb) { '' } else { "`n`nThe database is in the cloud (Aiven): check the internet connection, and that the Aiven service is running (free services power off when idle - start it from the Aiven console)." }
+            Show-Error "The app did not start within 30 seconds.$hint`n`nDetails are in:`n$Backend\logs\server.log"
         }
         Start-Sleep -Milliseconds 500
     }

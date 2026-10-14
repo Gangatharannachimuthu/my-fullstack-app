@@ -39,6 +39,14 @@ Schema `saravana_bricks_db` (utf8mb4).
 Reporting views (MySQL only; voided purchases and cancelled orders are already excluded):
 `v_daily_production`, `v_monthly_production`, `v_monthly_purchases`, `v_monthly_orders`, `v_invoice_details`.
 
+## Database location (Aiven cloud MySQL)
+
+Since 14-10-2026 the app uses **Aiven MySQL**: service `ssbm-2026`, database `saravana_bricks_db`. `backend/.env` holds the connection (`DATABASE_URL=...aivencloud.com...?ssl_ca=ca.pem`). `backend/ca.pem` is that Aiven project's CA certificate, and the server certificate is always verified against it. The old local-MySQL line is kept, commented out, in `.env`.
+
+- **Moving data:** `scripts/copy_to_aiven.py` copies a local database to Aiven (tables, views, every row), then checks counts and money totals.
+- **Changing the Aiven password:** reset it in the Aiven console, then edit `DATABASE_URL` in `.env` and restart the app.
+- **Free plan:** Aiven powers off an idle free service. If the app can't connect, power the service on from the Aiven console.
+
 ## First-time setup
 
 Prerequisites: Python 3.12, Node 20+, MySQL 8.
