@@ -4,11 +4,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _database_url():
+    """DATABASE_URL, with a relative ?ssl_ca= (e.g. ca.pem for Aiven) resolved
+    against this folder, so it works whatever directory the app is started from."""
+    url = os.getenv("DATABASE_URL", "mysql+pymysql://root:@localhost:3306/saravana_bricks_db")
+    if "ssl_ca=" not in url:
+        return url
+    from sqlalchemy.engine.url import make_url
+
+    parsed = make_url(url)
+    ca = parsed.query.get("ssl_ca")
+    if ca and not os.path.isabs(ca):
+        parsed = parsed.update_query_dict({"ssl_ca": os.path.join(BACKEND_DIR, ca)})
+    return parsed.render_as_string(hide_password=False)
+
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "mysql+pymysql://root:@localhost:3306/saravana_bricks_db"
-    )
+    SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     PORT = int(os.getenv("PORT", 5002))
