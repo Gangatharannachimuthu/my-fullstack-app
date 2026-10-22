@@ -219,3 +219,18 @@ def cancel(order_id):
     order.cancelled_at = utcnow()
     db.session.commit()
     return jsonify(order.to_dict())
+
+
+@orders_bp.delete("/<int:order_id>")
+@require_auth
+def delete(order_id):
+    """Permanently remove an order (e.g. entered by mistake).
+
+    The invoice counter is not rolled back, so the deleted order's number is never
+    issued again - the sequence simply has a gap.
+    """
+    order = db.get_or_404(CustomerOrder, order_id)
+    invoice_number = order.invoice_number
+    db.session.delete(order)
+    db.session.commit()
+    return jsonify({"ok": True, "invoice_number": invoice_number})

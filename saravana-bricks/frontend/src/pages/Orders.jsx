@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, FileText, Plus, Search } from 'lucide-react';
+import { Download, FileText, Plus, Search, Trash2 } from 'lucide-react';
 import { api, downloadCsv } from '../api';
 import { useBusiness } from '../business';
 import PeriodFilter, { newEntryLink, periodInvalid, periodParams, usePeriod } from '../components/PeriodFilter';
-import { Empty, ErrorBox, Loading, Pagination, StatusBadge, useDebounced, useLoader } from '../components/ui';
+import {
+  ConfirmDialog, Empty, ErrorBox, Loading, Pagination, StatusBadge, useDebounced, useLoader,
+} from '../components/ui';
 import { formatCount, formatDate, formatINR } from '../utils/format';
 
 export default function Orders() {
@@ -16,6 +18,7 @@ export default function Orders() {
   const [payment, setPayment] = useState('');
   const [page, setPage] = useState(1);
   const [exportError, setExportError] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const q = useDebounced(search);
   const invalid = periodInvalid(period);
 
@@ -126,6 +129,10 @@ export default function Orders() {
                         aria-label={`Invoice ${o.invoice_number}`}>
                         <FileText size={15} aria-hidden="true" /> Invoice
                       </Link>
+                      <button type="button" className="btn btn-small btn-ghost danger-text" title="Delete"
+                        aria-label={`Delete order ${o.invoice_number}`} onClick={() => setDeleting(o)}>
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -135,6 +142,19 @@ export default function Orders() {
         )}
         {d && <Pagination page={d.page} perPage={d.per_page} total={d.total_rows} onPage={setPage} />}
       </section>
+
+      <ConfirmDialog
+        open={!!deleting}
+        title={deleting ? `Delete order ${deleting.invoice_number}?` : ''}
+        message={deleting ? `${deleting.customer_name} — ${formatINR(deleting.total_amount)} on ${formatDate(deleting.order_date)} will be permanently deleted and cannot be recovered. The invoice number ${deleting.invoice_number} will not be used again. To keep it on record instead, open the order and use Cancel order.` : ''}
+        confirmLabel="Delete permanently"
+        danger
+        onConfirm={async () => {
+          await api.del(`/orders/${deleting.id}`);
+          list.reload();
+        }}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, FileText, Pencil } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Ban, FileText, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useBusiness } from '../business';
 import { ConfirmDialog, ErrorBox, Loading, StatusBadge, useLoader } from '../components/ui';
@@ -12,6 +12,8 @@ export default function OrderDetail() {
   const { business } = useBusiness();
   const order = useLoader(() => api.get(`/orders/${id}`), [id]);
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
 
   if (order.loading && !order.data) return <Loading />;
   if (order.error) return <div className="page"><ErrorBox error={order.error} onRetry={order.reload} /></div>;
@@ -37,6 +39,9 @@ export default function OrderDetail() {
           </p>
         </div>
         <div className="actions">
+          <button type="button" className="btn btn-ghost danger-text" onClick={() => setDeleting(true)}>
+            <Trash2 size={18} aria-hidden="true" /> Delete
+          </button>
           {!cancelled && (
             <>
               <button type="button" className="btn btn-ghost danger-text" onClick={() => setCancelling(true)}>
@@ -98,6 +103,19 @@ export default function OrderDetail() {
           order.reload();
         }}
         onClose={() => setCancelling(false)}
+      />
+
+      <ConfirmDialog
+        open={deleting}
+        title={`Delete order ${o.invoice_number}?`}
+        message={`${o.customer_name} — ${formatINR(o.total_amount)} will be permanently deleted and cannot be recovered. The invoice number ${o.invoice_number} will not be used again. To keep it on record instead, use Cancel order.`}
+        confirmLabel="Delete permanently"
+        danger
+        onConfirm={async () => {
+          await api.del(`/orders/${o.id}`);
+          navigate('/orders', { replace: true });
+        }}
+        onClose={() => setDeleting(false)}
       />
     </div>
   );

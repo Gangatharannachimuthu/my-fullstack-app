@@ -87,6 +87,34 @@ def test_cancelled_invoice_number_is_never_reused(client):
     assert totals["order_value"] == "8500.00"
 
 
+def test_deleted_order_number_is_never_reused(client):
+    first = client.post("/api/orders", json=order_payload()).get_json()
+    second = client.post("/api/orders", json=order_payload()).get_json()
+    res = client.delete(f"/api/orders/{second['id']}")
+    assert res.status_code == 200 and res.get_json()["invoice_number"] == "SSB-2026-0002"
+    assert client.get(f"/api/orders/{second['id']}").status_code == 404
+    third = client.post("/api/orders", json=order_payload()).get_json()
+    assert third["invoice_number"] == "SSB-2026-0003"  # 0002 is not handed out again
+    assert client.get("/api/orders").get_json()["total_rows"] == 2
+    assert client.delete(f"/api/orders/{first['id']}").status_code == 200
+    assert client.delete("/api/orders/99999").status_code == 404
+
+
+def test_delete_purchase_removes_it_from_totals(client):
+    a = client.post("/api/purchases", json={"purchase_date": "2026-10-02", "material_name": "Sand", "subtotal": "100"}).get_json()
+    b = client.post("/api/purchases", json={"purchase_date": "2026-10-03", "material_name": "Cement", "subtotal": "250"}).get_json()
+    assert client.delete(f"/api/purchases/{a['id']}").status_code == 200
+    listing = client.get("/api/purchases?month=2026-10&include_voided=true").get_json()
+    assert listing["total_rows"] == 1 and listing["totals"]["total_amount"] == "250.00"
+    client.post(f"/api/purchases/{b['id']}/void", json={})
+    assert client.delete(f"/api/purchases/{b['id']}").status_code == 200  # voided ones can be deleted too
+
+
+def test_delete_requires_login(anon):
+    assert anon.delete("/api/orders/1").status_code == 401
+    assert anon.delete("/api/purchases/1").status_code == 401
+
+
 def test_repeated_submit_with_same_key_creates_one_order(client):
     headers = {"Idempotency-Key": "form-123"}
     a = client.post("/api/orders", json=order_payload(), headers=headers)

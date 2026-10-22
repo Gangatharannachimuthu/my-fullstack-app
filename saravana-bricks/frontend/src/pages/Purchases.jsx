@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Download, Pencil, Plus, Search, Ban } from 'lucide-react';
+import { Download, Pencil, Plus, Search, Ban, Trash2 } from 'lucide-react';
 import { api, downloadCsv } from '../api';
 import PeriodFilter, { newEntryLink, periodInvalid, periodParams, usePeriod } from '../components/PeriodFilter';
 import {
@@ -16,6 +16,7 @@ export default function Purchases() {
   const [showVoided, setShowVoided] = useState(false);
   const [page, setPage] = useState(1);
   const [voiding, setVoiding] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [exportError, setExportError] = useState(null);
   const q = useDebounced(search);
   const invalid = periodInvalid(period);
@@ -138,6 +139,10 @@ export default function Purchases() {
                           </button>
                         </>
                       )}
+                      <button type="button" className="btn btn-small btn-ghost danger-text" title="Delete" onClick={() => setDeleting(p)}
+                        aria-label={`Delete purchase of ${p.material_name} on ${formatDate(p.purchase_date)}`}>
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -160,6 +165,19 @@ export default function Purchases() {
           list.reload();
         }}
         onClose={() => setVoiding(null)}
+      />
+
+      <ConfirmDialog
+        open={!!deleting}
+        title="Delete this purchase permanently?"
+        message={deleting ? `${deleting.material_name} on ${formatDate(deleting.purchase_date)} for ${formatINR(deleting.total_amount)} will be permanently deleted and cannot be recovered. To keep it on record instead, use Void.` : ''}
+        confirmLabel="Delete permanently"
+        danger
+        onConfirm={async () => {
+          await api.del(`/purchases/${deleting.id}`);
+          list.reload();
+        }}
+        onClose={() => setDeleting(null)}
       />
     </div>
   );

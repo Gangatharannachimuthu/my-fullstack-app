@@ -198,3 +198,13 @@ def void(purchase_id):
     purchase.void_reason = reason
     db.session.commit()
     return jsonify(purchase.to_dict())
+
+
+@purchases_bp.delete("/<int:purchase_id>")
+@require_auth
+def delete(purchase_id):
+    """Permanently remove a purchase. Use Void instead to keep it on record."""
+    purchase = db.get_or_404(MaterialPurchase, purchase_id)
+    db.session.delete(purchase)
+    db.session.commit()
+    return jsonify({"ok": True})
