@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vallangarai-traders.netlify.app/sitemap.xml
