@@ -1,0 +1,53 @@
+# Decap CMS: the owner's admin page at /admin. Login is Netlify Identity (email + password);
+# every save becomes a commit on main, and Netlify rebuilds the site (about a minute).
+# Paths are relative to the repo root, because rk-interior is one folder of this repo.
+backend:
+  name: git-gateway
+  branch: main
+  commit_messages:
+    create: 'RK Interior: add {{slug}}'
+    update: 'RK Interior: update {{slug}}'
+    uploadMedia: 'RK Interior: upload photo {{path}}'
+    deleteMedia: 'RK Interior: delete photo {{path}}'
+
+# For testing on your computer: run `npx decap-server` in the repo root, then open
+# http://localhost:3003/admin/index.html (no login needed).
+local_backend: true
+
+site_url: https://rk-interior.netlify.app
+display_url: https://rk-interior.netlify.app
+logo_url: /favicon.svg
+
+media_folder: rk-interior/public/images/uploads
+public_folder: /images/uploads
+
+collections:
+  - name: site
+    label: Website
+    files:
+      - name: gallery
+        label: Gallery photos
+        file: rk-interior/src/content/gallery.json
+        description: >
+          Photos shown in the Gallery section. The first photo is shown large.
+          Drag to reorder. Photos should be under 2 MB (phone photos are fine, but avoid
+          the "original / full size" option).
+        fields:
+          - name: photos
+            label: Photos
+            label_singular: Photo
+            widget: list
+            add_to_top: true
+            summary: '{{fields.caption}}'
+            fields:
+              - name: image
+                label: Photo
+                widget: image
+                choose_url: false
+                media_library:
+                  config:
+                    max_file_size: 2000000
+              - name: caption
+                label: Caption
+                widget: string
+                hint: 'Short description, e.g. "L-shaped modular kitchen, Kavinthapadi"'
