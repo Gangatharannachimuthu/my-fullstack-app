@@ -1,8 +1,13 @@
 {
   "photos": [
     {
+<<<<<<< HEAD
       "image": "/images/uploads/screenshot-2026-04-28-131141.png",
       "caption": "Test"
+=======
+      "image": "/images/uploads/screenshot-2026-10-29-153617.png",
+      "caption": "Complete interior solutions for homes and commercial spaces: modular kitchens, wardrobes, TV units, false ceilings, furniture and 2D / 3D design."
+>>>>>>> 2e1ba029fddaf3487c4869a3446359a7b6a43806
     },
     {
       "image": "/images/living-room-tv.jpg",
