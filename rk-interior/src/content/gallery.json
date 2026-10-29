@@ -1,0 +1,32 @@
+{
+  "photos": [
+    {
+      "image": "/images/uploads/screenshot-2026-10-29-153617.png",
+      "caption": "Complete interior solutions for homes and commercial spaces: modular kitchens, wardrobes, TV units, false ceilings, furniture and 2D / 3D design."
+    },
+    {
+      "image": "/images/living-room-tv.jpg",
+      "caption": "Living room with navy fluted TV wall, wooden shelves and ceiling lights"
+    },
+    {
+      "image": "/images/lounge.jpg",
+      "caption": "RK Interior lounge with wooden slat wall, gold accent and lounge chairs"
+    },
+    {
+      "image": "/images/kitchen.jpg",
+      "caption": "White modular kitchen with island and pendant lights"
+    },
+    {
+      "image": "/images/office.jpg",
+      "caption": "Minimal office room with wooden desk"
+    },
+    {
+      "image": "/images/living-room.jpg",
+      "caption": "Living room with wooden TV wall and sofa"
+    },
+    {
+      "image": "/images/lobby.jpg",
+      "caption": "Bright lobby with glass walls and lounge seating"
+    }
+  ]
+}
