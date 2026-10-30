@@ -1,6 +1,9 @@
 import { forwardRef } from 'react';
 import { formatCount, formatDate, formatINR, rupeesInWords } from '../utils/format';
 
+// Company owner's contact numbers, printed on every invoice.
+const OWNER_PHONES = ['8056719423', '8300856003'];
+
 const nonZero = (v) => v && Number(v) !== 0;
 const half = (rate) => `${Number(rate) / 2}%`;
 
@@ -9,6 +12,8 @@ const InvoiceSheet = forwardRef(function InvoiceSheet({ order: o, business: b },
   const tracking = b.payment_tracking_enabled && o.amount_paid !== null;
   const description = o.brick_type ? `Interlock bricks — ${o.brick_type}` : 'Interlock bricks';
   const showTaxable = nonZero(o.discount_amount) || o.tax_type !== 'none';
+  const phones = [...new Set([...OWNER_PHONES, b.phone].filter(Boolean))].join(', ');
+  const businessName = b.business_name.replace(/\s+Manufacturing$/i, '');
 
   return (
     <article className="invoice" ref={ref} aria-label={`Invoice ${o.invoice_number}`}>
@@ -18,11 +23,9 @@ const InvoiceSheet = forwardRef(function InvoiceSheet({ order: o, business: b },
         <div className="inv-seller">
           {b.logo_data && <img src={b.logo_data} alt="" className="inv-logo" />}
           <div>
-            <h1>{b.business_name}</h1>
+            <h1>{businessName}</h1>
             <p>{b.address}</p>
-            {(b.phone || b.email) && (
-              <p>{[b.phone && `Phone: ${b.phone}`, b.email && `Email: ${b.email}`].filter(Boolean).join(' · ')}</p>
-            )}
+            <p>{[`Phone: ${phones}`, b.email && `Email: ${b.email}`].filter(Boolean).join(' · ')}</p>
             {b.gstin && <p><strong>GSTIN:</strong> {b.gstin}</p>}
           </div>
         </div>
@@ -114,7 +117,7 @@ const InvoiceSheet = forwardRef(function InvoiceSheet({ order: o, business: b },
           )}
         </div>
         <div className="inv-sign">
-          <p>For {b.business_name}</p>
+          <p>For {businessName}</p>
           <div className="inv-sign-line" />
           <p>Authorised Signatory</p>
         </div>
