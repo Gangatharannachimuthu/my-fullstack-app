@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { GALLERY, PHOTOS } from './data.js';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { GALLERY_TABS, PHOTOS } from './data.js';
 import Header from './components/Header.jsx';
 import Hero from './components/Hero.jsx';
 import About from './components/About.jsx';
@@ -12,10 +12,28 @@ import Contact from './components/Contact.jsx';
 import { FloatingWhatsApp, Footer } from './components/Footer.jsx';
 
 // Every photo once (gallery first) - the lightbox can open any photo on the page.
-const ALL_PHOTOS = [...new Map([...GALLERY, ...Object.values(PHOTOS)].map((p) => [p.src, p])).values()];
+const ALL_PHOTOS = [
+  ...new Map(
+    [...GALLERY_TABS.flatMap((t) => t.photos), ...Object.values(PHOTOS)].map((p) => [p.src, p]),
+  ).values(),
+];
+
+// Each menu item is its own page, chosen by the URL hash (#about, #gallery, ...).
+const pageFromHash = () => window.location.hash.slice(1);
 
 export default function App() {
+  const [page, setPage] = useState(pageFromHash);
   const [photoIndex, setPhotoIndex] = useState(null);
+
+  useEffect(() => {
+    const onHashChange = () => setPage(pageFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
 
   const openPhoto = (src) => setPhotoIndex(ALL_PHOTOS.findIndex((p) => p.src === src));
   const closePhoto = useCallback(() => setPhotoIndex(null), []);
@@ -24,20 +42,27 @@ export default function App() {
     [],
   );
 
+  const pages = {
+    about: <About />,
+    services: (
+      <>
+        <Services />
+        <Process />
+      </>
+    ),
+    spaces: <Spaces onOpenPhoto={openPhoto} />,
+    gallery: <Gallery tabs={GALLERY_TABS} onOpen={openPhoto} />,
+    reviews: <Reviews />,
+    contact: <Contact />,
+  };
+
   return (
     <>
-      <Header />
-      <main>
-        <Hero />
-        <About onOpenPhoto={openPhoto} />
-        <Services />
-        <Spaces onOpenPhoto={openPhoto} />
-        <Process />
-        <Gallery photos={GALLERY} onOpen={openPhoto} />
-        <Reviews />
-        <Contact />
+      <Header page={page} />
+      <main className={page === 'contact' ? undefined : 'main--fill'}>
+        {pages[page] || <Hero />}
       </main>
-      <Footer />
+      {page === 'contact' && <Footer />}
       <FloatingWhatsApp />
       {photoIndex !== null && (
         <Lightbox photos={ALL_PHOTOS} index={photoIndex} onClose={closePhoto} onMove={movePhoto} />

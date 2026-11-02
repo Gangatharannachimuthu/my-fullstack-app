@@ -1,7 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowIcon, CloseIcon } from './Icons.jsx';
 
-export function Gallery({ photos, onOpen }) {
+// Grid layout for any photo count, so the owner's uploads never leave gaps at the top:
+// 1 or 2 photos fill the row; multiples of 3 show the first photo large.
+const gridClass = (count) => {
+  if (count <= 2) return `gallery gallery--${count}`;
+  return count % 3 === 0 ? 'gallery gallery--feature' : 'gallery';
+};
+
+export function Gallery({ tabs, onOpen }) {
+  const [activeId, setActiveId] = useState(tabs[0].id);
+  const active = tabs.find((t) => t.id === activeId);
+
   return (
     <section className="section section--tint" id="gallery">
       <div className="container">
@@ -9,12 +19,35 @@ export function Gallery({ photos, onOpen }) {
           <p className="eyebrow">Our work</p>
           <h2>Gallery</h2>
         </div>
-        <div className="gallery">
-          {photos.map((p, i) => (
-            <button key={p.src} className={`photo gallery__item gallery__item--${i}`} onClick={() => onOpen(p.src)}>
-              <img src={p.src} alt={p.alt} loading="lazy" />
+
+        <div className="tabs" role="tablist" aria-label="Gallery">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              id={`gallery-tab-${t.id}`}
+              aria-selected={t.id === active.id}
+              aria-controls="gallery-panel"
+              className={`tab${t.id === active.id ? ' tab--active' : ''}`}
+              onClick={() => setActiveId(t.id)}
+            >
+              {t.label}
             </button>
           ))}
+        </div>
+
+        <div id="gallery-panel" role="tabpanel" aria-labelledby={`gallery-tab-${active.id}`}>
+          {active.photos.length > 0 ? (
+            <div className={gridClass(active.photos.length)}>
+              {active.photos.map((p) => (
+                <button key={p.src} className="photo gallery__item" onClick={() => onOpen(p.src)}>
+                  <img src={p.src} alt={p.alt} loading="lazy" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="gallery__empty">Photos coming soon.</p>
+          )}
         </div>
       </div>
     </section>

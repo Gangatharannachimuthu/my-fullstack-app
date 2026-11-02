@@ -2,9 +2,9 @@ import { PROCESS } from '../data.js';
 
 export default function Process() {
   return (
-    <section className="section section--dark" id="process">
+    <section className="section section--dark section--compact" id="process">
       <div className="container">
-        <div className="section__head">
+        <div className="section__head section__head--compact">
           <p className="eyebrow">How we work</p>
           <h2>End-to-end project execution</h2>
         </div>

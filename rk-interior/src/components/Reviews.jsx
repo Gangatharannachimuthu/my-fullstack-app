@@ -38,7 +38,24 @@ function RatePicker() {
   );
 }
 
+// "2026-10-30" -> "30 Oct 2026" (parsed as a local date, so it never shifts a day).
+const formatDate = (iso) => {
+  if (!iso) return '';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const ReviewBy = ({ review }) => (
+  <span className="review__by">
+    <strong>{review.name}</strong>
+    {review.place && ` · ${review.place}`}
+    {review.date && <time dateTime={review.date}> · {formatDate(review.date)}</time>}
+  </span>
+);
+
 export default function Reviews() {
+  const [latest, ...older] = REVIEWS;
+
   return (
     <section className="section section--tint" id="reviews">
       <div className="container">
@@ -48,6 +65,29 @@ export default function Reviews() {
         </div>
 
         <div className="reviews">
+          {latest && (
+            <figure className="review review--latest">
+              <span className="review__badge">Most recent review</span>
+              <Stars value={latest.stars} size={24} />
+              <blockquote>“{latest.text}”</blockquote>
+              <figcaption>
+                <ReviewBy review={latest} />
+              </figcaption>
+            </figure>
+          )}
+
+          {older.length > 0 && (
+            <ul className="reviews__list">
+              {older.map((r) => (
+                <li key={r.name + r.text} className="review">
+                  <Stars value={r.stars} />
+                  <p>“{r.text}”</p>
+                  <ReviewBy review={r} />
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div className="reviews__summary">
             {GOOGLE.rating ? (
               <>
@@ -59,27 +99,12 @@ export default function Reviews() {
               </>
             ) : (
               <>
-                <strong className="reviews__first">Be the first to rate us</strong>
+                <strong className="reviews__first">{latest ? 'Share your experience' : 'Be the first to rate us'}</strong>
                 <span className="reviews__count">Your feedback helps other families choose with confidence.</span>
               </>
             )}
             <RatePicker />
           </div>
-
-          {REVIEWS.length > 0 && (
-            <ul className="reviews__list">
-              {REVIEWS.map((r) => (
-                <li key={r.name + r.text} className="review">
-                  <Stars value={r.stars} />
-                  <p>“{r.text}”</p>
-                  <span className="review__by">
-                    <strong>{r.name}</strong>
-                    {r.place && ` · ${r.place}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       </div>
     </section>

@@ -1,27 +1,22 @@
-import { ABOUT, BUSINESS, INSTAGRAM, PHOTOS } from '../data.js';
-import { InstagramIcon, MailIcon, PhoneIcon, UserIcon } from './Icons.jsx';
+import { ABOUT, BUSINESS, INSTAGRAM } from '../data.js';
+import { InstagramIcon, MailIcon, PhoneIcon } from './Icons.jsx';
 
-export default function About({ onOpenPhoto }) {
+export default function About() {
   return (
     <section className="section" id="about">
       <div className="container about">
-        <button className="photo about__photo" onClick={() => onOpenPhoto(PHOTOS.lounge.src)}>
-          <img src={PHOTOS.lounge.src} alt={PHOTOS.lounge.alt} loading="lazy" />
-        </button>
+        <figure className="about__portrait">
+          <img src={BUSINESS.owner.photo} alt={`${BUSINESS.owner.name}, ${BUSINESS.owner.role}`} />
+        </figure>
 
         <div className="about__text">
           <h2 className="tag">About us</h2>
           <p className="about__lead">{ABOUT}</p>
 
           <div className="owner">
-            <div className="owner__row">
-              <span className="owner__icon">
-                <UserIcon width={24} height={24} />
-              </span>
-              <div>
-                <strong>{BUSINESS.owner.name}</strong>
-                <span>{BUSINESS.owner.role}</span>
-              </div>
+            <div className="owner__head">
+              <strong>{BUSINESS.owner.name}</strong>
+              <span>{BUSINESS.owner.role}</span>
             </div>
             <a className="owner__row" href={`tel:${BUSINESS.phones[0].tel}`}>
               <span className="owner__icon">

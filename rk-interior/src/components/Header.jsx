@@ -4,6 +4,7 @@ import Logo from './Logo.jsx';
 import { CloseIcon, MenuIcon, PhoneIcon } from './Icons.jsx';
 
 const LINKS = [
+  { href: '#home', label: 'Home' },
   { href: '#about', label: 'About' },
   { href: '#services', label: 'Services' },
   { href: '#spaces', label: 'Spaces' },
@@ -12,7 +13,7 @@ const LINKS = [
   { href: '#contact', label: 'Contact' },
 ];
 
-export default function Header() {
+export default function Header({ page }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -26,13 +27,18 @@ export default function Header() {
   return (
     <header className={`header${scrolled ? ' header--scrolled' : ''}`}>
       <div className="container header__inner">
-        <a href="#top" className="header__brand" onClick={() => setOpen(false)}>
+        <a href="#home" className="header__brand" onClick={() => setOpen(false)}>
           <Logo />
         </a>
 
         <nav className={`nav${open ? ' nav--open' : ''}`} aria-label="Main">
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href} onClick={() => setOpen(false)}>
+            <a
+              key={l.href}
+              href={l.href}
+              className={l.href === `#${page || 'home'}` ? 'nav__active' : undefined}
+              onClick={() => setOpen(false)}
+            >
               {l.label}
             </a>
           ))}

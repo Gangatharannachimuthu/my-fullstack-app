@@ -16,6 +16,8 @@ local_backend: true
 
 site_url: https://rk-interior.netlify.app
 display_url: https://rk-interior.netlify.app
+# Hide the "View Live" button in the editor.
+show_preview_links: false
 logo_url: /favicon.svg
 
 media_folder: rk-interior/public/images/uploads
@@ -29,15 +31,17 @@ collections:
         label: Gallery photos
         file: rk-interior/src/content/gallery.json
         description: >
-          Photos shown in the Gallery section. The first photo is shown large.
-          Drag to reorder. Photos should be under 2 MB (phone photos are fine, but avoid
-          the "original / full size" option).
+          Each list is one tab in the Gallery section of the website. Drag to reorder.
+          Photos should be under 2 MB (phone photos are fine, but avoid the
+          "original / full size" option).
         fields:
-          - name: photos
-            label: Photos
+          - name: latest
+            label: Latest Completed Sites
             label_singular: Photo
             widget: list
             add_to_top: true
+            required: false
+            hint: 'Shown first when visitors open the Gallery.'
             summary: '{{fields.caption}}'
             fields:
               - name: image
@@ -51,3 +55,63 @@ collections:
                 label: Caption
                 widget: string
                 hint: 'Short description, e.g. "L-shaped modular kitchen, Kavinthapadi"'
+          - name: completed
+            label: Completed Sites
+            label_singular: Photo
+            widget: list
+            add_to_top: true
+            required: false
+            hint: 'Older finished work.'
+            summary: '{{fields.caption}}'
+            fields:
+              - name: image
+                label: Photo
+                widget: image
+                choose_url: false
+                media_library:
+                  config:
+                    max_file_size: 2000000
+              - name: caption
+                label: Caption
+                widget: string
+                hint: 'Short description, e.g. "L-shaped modular kitchen, Kavinthapadi"'
+      - name: reviews
+        label: Client reviews
+        file: rk-interior/src/content/reviews.json
+        description: >
+          Reviews shown on the Reviews page, newest date first; the newest one is shown as
+          "Most recent review". Only add real reviews from clients (e.g. copied from Google or WhatsApp).
+        fields:
+          - name: reviews
+            label: Reviews
+            label_singular: Review
+            widget: list
+            add_to_top: true
+            required: false
+            summary: '{{fields.name}} – {{fields.stars}}★ ({{fields.date}})'
+            fields:
+              - name: name
+                label: Client name
+                widget: string
+              - name: place
+                label: Place
+                widget: string
+                required: false
+                hint: 'Town or area, e.g. "Erode"'
+              - name: stars
+                label: Stars (1–5)
+                widget: number
+                value_type: int
+                min: 1
+                max: 5
+                default: 5
+              - name: text
+                label: Review
+                widget: text
+              - name: date
+                label: Date
+                widget: datetime
+                format: 'YYYY-MM-DD'
+                date_format: 'DD-MM-YYYY'
+                time_format: false
+                picker_utc: true

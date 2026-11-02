@@ -30,7 +30,7 @@ All text, phone number, email, address and the photo list are in **`src/data.js`
 | "How we work" steps | `PROCESS` |
 | Instagram | `INSTAGRAM.handle` (also `sameAs` in `index.html`) |
 | Google review link, rating, count | `GOOGLE` |
-| Client reviews shown on the site | `REVIEWS` (real reviews only, copied from Google) |
+| Client reviews shown on the site | `/admin` → Client reviews, or `src/content/reviews.json` (real reviews only; newest date shown first) |
 | Gallery photos | `/admin` page, or edit `src/content/gallery.json` |
 | Hero / About / Spaces photos | put the file in `public/images/` and update `PHOTOS` |
 
@@ -58,8 +58,8 @@ Netlify (**Access control → OAuth**); the owner then needs a GitHub account wi
 
 ### How the owner adds a photo
 
-Login → **Website → Gallery photos** → **Add photo** → choose the photo, type a caption → **Publish**.
-The newest photo is added at the top (shown large). Keep photos under 2 MB.
+Login → **Website → Gallery photos** → in **Latest Completed Sites** or **Completed Sites** click **Add photo** → choose the photo, type a caption → **Publish**. Each list is one tab in the Gallery.
+The newest photo is added at the top of its list. Keep photos under 2 MB.
 
 ### Testing the admin page on your computer (no login)
 
@@ -74,8 +74,10 @@ files here (not committed) – check `git status` / revert test changes before c
 
 ## Sections
 
+Each menu item opens as its own page (hash URLs such as `#gallery`, chosen in `src/App.jsx`); Services also holds How we work.
+
 Header (sticky, mobile menu) · Hero "Build your dream home with us" · About us with MD contact ·
-Services (9) · Spaces we design (4) · How we work · Gallery with full-screen viewer ·
+Services (9) · Spaces we design (4) · How we work · Gallery (tabs: Latest Completed Sites, Completed Sites) with full-screen viewer ·
 Contact (phone, email, location, Google Map, WhatsApp enquiry form) · Footer · floating WhatsApp button.
 
 ## Deploy on Netlify
@@ -86,7 +88,6 @@ Contact (phone, email, location, Google Map, WhatsApp enquiry form) · Footer ·
 4. Deploy, then **Site configuration → Change site name** (e.g. `rk-interior`).
 
 ## Still to confirm with the owner
-
 - Google Business Profile review link (Google Business → "Ask for reviews" → copy link)
 - Full shop / office address (door no, street) and Google Maps pin
 - Original high-resolution photos (the current ones are cut from the brochure; the four

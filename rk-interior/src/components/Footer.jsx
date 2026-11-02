@@ -1,4 +1,4 @@
-import { BUSINESS, INSTAGRAM, SERVICES, whatsappLink } from '../data.js';
+import { BUSINESS, INSTAGRAM, whatsappLink } from '../data.js';
 import Logo from './Logo.jsx';
 import { InstagramIcon, MailIcon, PhoneIcon, WhatsAppIcon } from './Icons.jsx';
 
@@ -9,14 +9,6 @@ export function Footer() {
         <div>
           <Logo light slogan />
           <p className="footer__about">Interior design and execution in {BUSINESS.area.replace(' · ', ', ')}.</p>
-        </div>
-        <div>
-          <h4>Services</h4>
-          <ul>
-            {SERVICES.slice(0, 5).map((s) => (
-              <li key={s.title}>{s.title}</li>
-            ))}
-          </ul>
         </div>
         <div>
           <h4>Contact</h4>

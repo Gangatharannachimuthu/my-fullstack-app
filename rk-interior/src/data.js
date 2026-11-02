@@ -3,11 +3,12 @@
 // Content is taken from the client's RK Interior brochure.
 // Gallery photos are in content/gallery.json, which the owner edits from /admin (Decap CMS).
 import gallery from './content/gallery.json';
+import reviews from './content/reviews.json';
 
 export const BUSINESS = {
   name: 'RK Interior',
   slogan: 'We Design Your Dream Space',
-  owner: { name: 'R Ranjith Babu', role: 'Managing Director' },
+  owner: { name: 'R Ranjith Babu', role: 'Managing Director', photo: '/images/managing-director-full.jpg' },
   phones: [{ display: '97253 55524', tel: '+919725355524' }],
   // WhatsApp number: country code, no +.
   whatsapp: '919725355524',
@@ -39,9 +40,11 @@ export const googleReviewLink =
   GOOGLE.reviewUrl ||
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('RK Interior Kavindapadi Erode')}`;
 
-// Real client reviews only (copy them from Google). Example:
-// { name: 'Client name', place: 'Erode', stars: 5, text: 'What they said.' },
-export const REVIEWS = [];
+// Client reviews are in content/reviews.json, which the owner edits from /admin.
+// Newest first; dates are stored as YYYY-MM-DD.
+export const REVIEWS = (reviews.reviews || [])
+  .filter((r) => r.name && r.text)
+  .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
 export const whatsappLink = (text = '') =>
   `https://wa.me/${BUSINESS.whatsapp}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
@@ -56,6 +59,13 @@ export const ABOUT =
 
 const img = (file, alt) => ({ src: `/images/${file}`, alt });
 
+// Home page slideshow, in display order.
+export const HERO_SLIDES = [
+  { ...img('hero-living-room.jpg', 'Warm living room with curved sofa, lit wooden shelves and gallery wall'), label: 'Living Room' },
+  { ...img('hero-bedroom.jpg', 'Bedroom with velvet headboard, wall panelling, brass lamps and cove-lit ceiling'), label: 'Bedroom' },
+  { ...img('hero-kitchen.jpg', 'Grey modular kitchen with marble waterfall island and brass pendant lights'), label: 'Modular Kitchen' },
+];
+
 export const PHOTOS = {
   livingRoomTv: img('living-room-tv.jpg', 'Living room with navy fluted TV wall, wooden shelves and ceiling lights'),
   lounge: img('lounge.jpg', 'RK Interior lounge with wooden slat wall, gold accent and lounge chairs'),
@@ -65,9 +75,13 @@ export const PHOTOS = {
   lobby: img('lobby.jpg', 'Bright lobby with glass walls and lounge seating'),
 };
 
-export const GALLERY = gallery.photos
-  .filter((p) => p.image)
-  .map((p) => ({ src: p.image, alt: p.caption || 'RK Interior work' }));
+const toPhotos = (list = []) =>
+  list.filter((p) => p.image).map((p) => ({ src: p.image, alt: p.caption || 'RK Interior work' }));
+
+export const GALLERY_TABS = [
+  { id: 'latest', label: 'Latest Completed Sites', photos: toPhotos(gallery.latest) },
+  { id: 'completed', label: 'Completed Sites', photos: toPhotos(gallery.completed) },
+];
 
 // `icon` matches a key in ServiceIcon (components/Icons.jsx).
 export const SERVICES = [

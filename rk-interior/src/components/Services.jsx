@@ -3,9 +3,9 @@ import { ServiceIcon } from './Icons.jsx';
 
 export default function Services() {
   return (
-    <section className="section section--tint" id="services">
+    <section className="section section--tint section--compact" id="services">
       <div className="container">
-        <div className="section__head">
+        <div className="section__head section__head--compact">
           <p className="eyebrow">What we do</p>
           <h2>Our services</h2>
         </div>
