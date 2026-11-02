@@ -42,7 +42,7 @@ export default function Contact() {
           <div className="contact__info">
             <div className="contact__actions">
               <a className="btn btn--orange" href={`tel:${BUSINESS.phones[0].tel}`}>
-                <PhoneIcon /> Call {BUSINESS.phones[0].display}
+                <PhoneIcon /> Call<span className="contact__num"> {BUSINESS.phones[0].display}</span>
               </a>
               <a className="btn btn--whatsapp" href={whatsappLink()} target="_blank" rel="noreferrer">
                 <WhatsAppIcon /> WhatsApp

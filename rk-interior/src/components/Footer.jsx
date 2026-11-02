@@ -26,20 +26,20 @@ export function Footer() {
               <span className="footer__bar-icon">
                 <PhoneIcon width={18} height={18} />
               </span>
-              Mob: {p.display}
+              <span className="footer__bar-text">Mob: {p.display}</span>
             </a>
           ))}
           <a href={`mailto:${BUSINESS.email}`}>
             <span className="footer__bar-icon">
               <MailIcon width={18} height={18} />
             </span>
-            {BUSINESS.email}
+            <span className="footer__bar-text">{BUSINESS.email}</span>
           </a>
           <a href={INSTAGRAM.url} target="_blank" rel="noreferrer">
             <span className="footer__bar-icon">
               <InstagramIcon width={18} height={18} />
             </span>
-            @{INSTAGRAM.handle}
+            <span className="footer__bar-text">@{INSTAGRAM.handle}</span>
           </a>
         </div>
       </div>

@@ -15,8 +15,12 @@ export default function About() {
 
           <div className="owner">
             <div className="owner__head">
-              <strong>{BUSINESS.owner.name}</strong>
-              <span>{BUSINESS.owner.role}</span>
+              {/* Phones show this small photo instead of the large portrait, so the page fits. */}
+              <img className="owner__thumb" src={BUSINESS.owner.photo} alt="" />
+              <div>
+                <strong>{BUSINESS.owner.name}</strong>
+                <span>{BUSINESS.owner.role}</span>
+              </div>
             </div>
             <a className="owner__row" href={`tel:${BUSINESS.phones[0].tel}`}>
               <span className="owner__icon">
