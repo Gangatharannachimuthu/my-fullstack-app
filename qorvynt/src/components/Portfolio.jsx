@@ -2,72 +2,26 @@ import { PROJECTS } from '../data.js';
 import PageHead from './PageHead.jsx';
 import Icon from './Icons.jsx';
 
-const MiniPhone = ({ ios }) => (
-  <span className={`mini-phone${ios ? ' mini-phone--ios' : ''}`}>
-    <i />
-    <i />
-    <i />
-  </span>
-);
-
-// Small abstract previews so the illustrative projects need no screenshots.
-function Mock({ type }) {
-  switch (type) {
-    case 'bars':
-      return (
-        <div className="mock mock--bars">
-          {[40, 65, 50, 85, 70, 95].map((h, i) => (
-            <span key={i} style={{ height: `${h}%` }} />
-          ))}
-        </div>
-      );
-    case 'stock':
-      return (
-        <svg className="mock" viewBox="0 0 200 80" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0 64 30 52 60 58 90 34 120 40 150 20 200 12" fill="none" style={{ stroke: 'var(--accent)' }} strokeWidth="2.5" />
-          <path d="M0 70 30 66 60 62 90 54 120 56 150 44 200 40" fill="none" style={{ stroke: 'var(--primary)' }} strokeWidth="2" strokeDasharray="4 4" />
-        </svg>
-      );
-    case 'chat':
-      return (
-        <div className="mock mock--chat">
-          <span className="mock__bubble" />
-          <span className="mock__bubble mock__bubble--me" />
-          <span className="mock__bubble mock__bubble--short" />
-        </div>
-      );
-    case 'android':
-      return (
-        <div className="mock mock--phones">
-          <MiniPhone />
-        </div>
-      );
-    case 'ios':
-      return (
-        <div className="mock mock--phones">
-          <MiniPhone ios />
-        </div>
-      );
-    case 'cross':
-      return (
-        <div className="mock mock--phones">
-          <MiniPhone />
-          <MiniPhone ios />
-        </div>
-      );
-    default:
-      return (
-        <div className="mock mock--table">
-          {[0, 1, 2, 3].map((r) => (
-            <span key={r} className="mock__row">
-              <i />
-              <i />
-              <i className={r % 2 ? 'ok' : 'low'} />
-            </span>
-          ))}
-        </div>
-      );
-  }
+// Drawn invoice preview for private apps that have no public page to screenshot.
+function InvoicePreview() {
+  return (
+    <div className="invoice" aria-hidden="true">
+      <div className="invoice__head">
+        <span className="invoice__logo" />
+        <span className="invoice__title">INVOICE</span>
+      </div>
+      {[70, 55, 62, 48].map((w, i) => (
+        <span key={i} className="invoice__row">
+          <i style={{ width: `${w}%` }} />
+          <i />
+        </span>
+      ))}
+      <span className="invoice__total">
+        <i />
+        <b />
+      </span>
+    </div>
+  );
 }
 
 export default function Portfolio() {
@@ -76,31 +30,57 @@ export default function Portfolio() {
       <div className="container">
         <PageHead
           center
-          eyebrow="Portfolio"
-          title="What we can build for you"
-          intro="Illustrative examples of solutions we build - not completed client projects or real customers."
+          eyebrow="Our Work"
+          title="Projects we have delivered"
+          intro="Websites and business applications we have designed, built and launched for our clients."
         />
-        <div className="grid grid--projects">
+        <div className="grid grid--work">
           {PROJECTS.map((p, i) => (
-            <article key={p.title} className="project rise" style={{ '--i': i }}>
-              <div className="project__preview" aria-hidden="true">
-                <Mock type={p.mock} />
+            <article key={p.client} className="work rise" style={{ '--i': i }}>
+              <div className="work__preview">
+                {p.image ? (
+                  <img src={p.image} alt={`${p.client} website home page`} width="1280" height="800" loading="lazy" />
+                ) : (
+                  <InvoicePreview />
+                )}
               </div>
-              <span className="tag-sample">Illustrative example</span>
-              <h2 className="project__title">{p.title}</h2>
-              <p className="project__text">{p.text}</p>
-              <ul className="project__tags" aria-label="Solution type">
-                {p.tags.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
+              <div className="work__body">
+                <span className="work__type">{p.type}</span>
+                <h2 className="work__client">{p.client}</h2>
+                {p.location && (
+                  <p className="work__location">
+                    <Icon name="pin" size={14} /> {p.location}
+                  </p>
+                )}
+                <p className="work__text">{p.text}</p>
+                <ul className="ticks work__features">
+                  {p.features.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+                <ul className="project__tags" aria-label="Built with">
+                  {p.tags.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+                {p.url ? (
+                  <a className="work__link" href={p.url} target="_blank" rel="noopener noreferrer">
+                    Visit live site <Icon name="arrow" size={15} />
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
+                ) : (
+                  <p className="work__private">
+                    <Icon name="lock" size={14} /> Private business app
+                  </p>
+                )}
+              </div>
             </article>
           ))}
           <a className="project project--cta rise" style={{ '--i': PROJECTS.length }} href="#contact">
             <span className="card__icon">
               <Icon name="rocket" />
             </span>
-            <span className="project__title">Have a project in mind?</span>
+            <span className="project__title">Your project could be next</span>
             <span className="project__text">Tell us what you want to build and we will help you plan it.</span>
             <span className="project__go">
               Start Your Project <Icon name="arrow" size={16} />

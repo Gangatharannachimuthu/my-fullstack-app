@@ -53,8 +53,9 @@ export function Terms() {
       <p>By using this website you agree to these terms.</p>
       <h2>Website content</h2>
       <p>
-        The content on this website is provided for general information about our services. Portfolio items and app
-        mockups shown are illustrative examples and do not represent completed client work or published apps.
+        The content on this website is provided for general information about our services. Client projects in our
+        portfolio are shown with our clients’ agreement. App mockups on the Mobile Apps page are illustrative examples
+        and do not represent published apps.
       </p>
       <h2>Mobile app releases</h2>
       <p>

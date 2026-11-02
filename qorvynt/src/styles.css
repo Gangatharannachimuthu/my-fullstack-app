@@ -500,9 +500,6 @@ svg {
 .grid--why > :last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
-.grid--projects {
-  grid-template-columns: repeat(4, 1fr);
-}
 .grid--mobile {
   grid-template-columns: repeat(3, 1fr);
 }
@@ -1349,15 +1346,162 @@ svg {
   border-color: rgba(var(--accent-rgb), 0.4);
   transform: translateY(-3px);
 }
-.project__preview {
-  height: clamp(56px, 7.8vh, 80px);
-  padding: 12px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.08), rgba(var(--primary-rgb), 0.1)), var(--bg-2);
-  border: 1px solid var(--line);
+.grid--work {
+  grid-template-columns: repeat(3, 1fr) 0.8fr;
+  align-items: stretch;
 }
-.project .tag-sample {
+.work {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+.work:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -24px rgba(var(--primary-rgb), 0.55);
+}
+.work__preview {
+  aspect-ratio: 16 / 9;
+  max-height: 24vh;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.work__preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.6s ease;
+}
+.work:hover .work__preview img {
+  transform: scale(1.04);
+}
+.work__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(14px, 2vh, 20px);
+}
+.work__type {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(var(--primary-rgb), 0.14);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.work__client {
+  font-size: 19px;
+}
+.work__location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: -4px;
+  color: var(--faint);
+  font-size: 13px;
+}
+.work__text {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.work__features {
+  margin-top: 2px;
+}
+.work .project__tags {
+  margin-top: auto;
+}
+.work__link,
+.work__private {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 4px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.work__link {
+  align-self: flex-start;
+  color: var(--accent);
+}
+.work__link:hover {
+  text-decoration: underline;
+}
+.work__private {
+  color: var(--faint);
+}
+.invoice {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7%;
+  width: 62%;
+  height: 84%;
+  margin: 4% auto 0;
+  padding: 6% 7%;
+  border-radius: 8px 8px 0 0;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line-strong), 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+}
+.invoice__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.invoice__logo {
+  width: 22%;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--grad);
+}
+.invoice__title {
+  color: var(--muted);
+  font: 700 9px/1 var(--font-body);
+  letter-spacing: 0.2em;
+}
+.invoice__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.invoice__row i {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(var(--muted-rgb), 0.35);
+}
+.invoice__row i:last-child {
+  width: 16%;
+}
+.invoice__total {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6%;
+  border-top: 1px solid var(--line-strong);
+}
+.invoice__total i {
+  width: 18%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(var(--muted-rgb), 0.5);
+}
+.invoice__total b {
+  width: 24%;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--accent);
 }
 .project__title {
   font: 600 16.5px/1.25 var(--font-head);
@@ -1380,38 +1524,6 @@ svg {
   font-weight: 600;
   font-size: 14.5px;
 }
-.mock--phones {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-.mini-phone {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 26px;
-  height: 100%;
-  overflow: hidden;
-  padding: 5px 4px;
-  border: 2px solid rgba(var(--muted-rgb), 0.45);
-  border-radius: 7px;
-  background: var(--bg);
-}
-.mini-phone--ios {
-  border-radius: 9px;
-}
-.mini-phone i {
-  display: block;
-  flex: none;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(var(--muted-rgb), 0.45);
-}
-.mini-phone i:first-child {
-  height: 8px;
-  background: var(--grad);
-}
 .project__text {
   color: var(--muted);
   font-size: 14px;
@@ -1430,68 +1542,6 @@ svg {
   background: rgba(255, 255, 255, 0.05);
   color: var(--muted);
   font-size: 12px;
-}
-
-.mock {
-  width: 100%;
-  height: 100%;
-}
-.mock--bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 8%;
-}
-.mock--bars span {
-  flex: 1;
-  border-radius: 3px 3px 0 0;
-  background: var(--grad);
-  opacity: 0.85;
-}
-.mock--table {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.mock__row {
-  display: flex;
-  gap: 8px;
-}
-.mock__row i {
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(var(--muted-rgb), 0.35);
-  flex: 2;
-}
-.mock__row i:first-child {
-  flex: 1;
-}
-.mock__row i.ok {
-  flex: 0.6;
-  background: var(--accent);
-}
-.mock__row i.low {
-  flex: 0.6;
-  background: var(--primary);
-}
-.mock--chat {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.mock__bubble {
-  width: 62%;
-  height: 22%;
-  border-radius: 8px 8px 8px 2px;
-  background: rgba(var(--muted-rgb), 0.3);
-}
-.mock__bubble--me {
-  align-self: flex-end;
-  width: 48%;
-  border-radius: 8px 8px 2px 8px;
-  background: var(--grad);
-}
-.mock__bubble--short {
-  width: 36%;
 }
 
 /* ---------- Contact ---------- */
@@ -1766,7 +1816,7 @@ svg {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1279px) {
-  .grid--projects,
+  .grid--work,
   .grid--mobile {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1876,7 +1926,7 @@ svg {
   }
   .grid--industries,
   .grid--why,
-  .grid--projects,
+  .grid--work,
   .grid--mobile,
   .form__row,
   .footer__grid {

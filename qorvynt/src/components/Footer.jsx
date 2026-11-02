@@ -30,7 +30,7 @@ export default function Footer() {
               </li>
             ))}
             <li>
-              <a href="#work">Portfolio examples</a>
+              <a href="#work">Our work</a>
             </li>
           </ul>
         </nav>

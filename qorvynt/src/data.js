@@ -60,9 +60,9 @@ export const PAGES = {
       'How QORVYNT delivers software and mobile apps: discover, plan, design, develop and test, deploy and maintain.',
   },
   work: {
-    title: 'Portfolio – Illustrative Examples | QORVYNT',
+    title: 'Our Work – Client Projects | QORVYNT',
     description:
-      'Illustrative examples of web applications, Android and iOS apps, AI assistants and analytics dashboards QORVYNT can build.',
+      'Websites and business applications QORVYNT has designed, built and delivered, including RK Interior, Vallangarai Traders and Sri Saravana Interlock Bricks.',
   },
   contact: {
     title: 'Start Your Project | Contact QORVYNT',
@@ -244,16 +244,38 @@ export const MOBILE_LIFECYCLE = [
   { icon: 'wrench', title: 'Ongoing maintenance' },
 ];
 
-// Illustrative examples of the kind of work QORVYNT does - not real client projects.
-// `mock` picks the small preview drawn in components/Portfolio.jsx.
+// Real client projects delivered by QORVYNT, listed with the clients' agreement.
+// `image` is a screenshot in public/images/work/; private apps without a public page set
+// `image: null` and show a drawn preview instead. `url` is the live site (omit for private apps).
 export const PROJECTS = [
-  { mock: 'table', title: 'Business Management Web Application', text: 'Customers, orders, invoices and staff tasks in one browser-based system.', tags: ['Web App', 'Cloud'] },
-  { mock: 'stock', title: 'Inventory Management System', text: 'Real-time stock levels, purchase orders and low-stock alerts across locations.', tags: ['Web', 'API'] },
-  { mock: 'android', title: 'Android Business App', text: 'Field team app for job lists, photos, signatures and offline sync.', tags: ['Android', 'Kotlin'] },
-  { mock: 'ios', title: 'iOS Customer App', text: 'Booking, payments and order tracking for iPhone customers.', tags: ['iOS', 'Swift'] },
-  { mock: 'cross', title: 'Cross-Platform Service App', text: 'One codebase serving Android and iOS users with a shared design system.', tags: ['Flutter', 'React Native'] },
-  { mock: 'chat', title: 'AI-Powered Business Assistant', text: 'Answers staff and customer questions from company documents.', tags: ['AI', 'Automation'] },
-  { mock: 'bars', title: 'Data Analytics Dashboard', text: 'Sales, operations and finance KPIs with automated reports.', tags: ['Data', 'Analytics'] },
+  {
+    client: 'RK Interior',
+    location: 'Kavinthapadi, Erode',
+    type: 'Business website',
+    image: '/images/work/rk-interior.jpg',
+    url: 'https://rk-interior.netlify.app/',
+    text: 'Website for an interior design firm - full-screen project slideshow, services, gallery, client reviews and enquiries.',
+    features: ['Owner admin panel for gallery & reviews', 'WhatsApp enquiry form', 'Mobile-friendly and SEO-ready'],
+    tags: ['React', 'Vite', 'Decap CMS', 'Netlify'],
+  },
+  {
+    client: 'Vallangarai Traders',
+    location: 'Kodumudi, Erode',
+    type: 'Business website',
+    image: '/images/work/vallangarai-traders.jpg',
+    url: 'https://vallangarai-traders.netlify.app/',
+    text: 'Website for an aluminium, UPVC, PVC doors and curtains business, showcasing products with real project photos.',
+    features: ['Product catalogue with real photos', 'One-tap call & WhatsApp', 'Mobile-first design'],
+    tags: ['React', 'Vite', 'Netlify'],
+  },
+  {
+    client: 'Sri Saravana Interlock Bricks',
+    type: 'Billing & management web app',
+    image: null,
+    text: 'Billing system for a brick manufacturer - raw-material purchases, daily production, customer orders and invoices in one place.',
+    features: ['Printable A4 invoices', 'Production, purchase & order tracking', 'Secure login, cloud MySQL database'],
+    tags: ['React', 'Python Flask', 'MySQL'],
+  },
 ];
 
 export const PROJECT_TYPES = [
