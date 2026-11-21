@@ -245,26 +245,78 @@ def test_password_change_requires_current_password(client):
     assert "current_password" in res.get_json()["fields"]
 
 
-def test_statement_collects_one_customers_bills(client):
-    client.post("/api/orders", json=order_payload(customer_phone="99442 00178", order_date="2026-10-02"))
-    client.post("/api/orders", json=order_payload(customer_phone="+91 9944200178", order_date="2026-11-17",
-                                                  quantity="3200", rate_per_brick="46.00"))
-    client.post("/api/orders", json=order_payload(customer_phone="9944200178", order_status="Draft"))
-    cancelled = client.post("/api/orders", json=order_payload(customer_phone="9944200178")).get_json()
+def booking_payload(**overrides):
+    data = {
+        "order_date": "2026-11-17",
+        "customer_name": "sundharaj",
+        "customer_phone": "9944200178",
+        "customer_address": "Kavindapadi, Erode",
+        "brick_type": "8 inch",
+        "booked_quantity": "10000",
+    }
+    data.update(overrides)
+    return data
+
+
+def test_order_holds_several_invoices(client):
+    booking = client.post("/api/bookings", json=booking_payload()).get_json()
+    assert booking["remaining_quantity"] == 10000 and booking["invoices"] == []
+
+    first = client.post("/api/orders", json=order_payload(
+        booking_id=booking["id"], customer_name="ignored", quantity="3200", rate_per_brick="46.00",
+    )).get_json()
+    client.post("/api/orders", json=order_payload(booking_id=booking["id"], quantity="1500", rate_per_brick="44.00"))
+    cancelled = client.post("/api/orders", json=order_payload(booking_id=booking["id"], quantity="900")).get_json()
     client.post(f"/api/orders/{cancelled['id']}/cancel")
-    client.post("/api/orders", json=order_payload(customer_phone="9000000002"))
 
-    body = client.get("/api/orders/statement?phone=9944200178").get_json()
-    assert [o["order_date"] for o in body["items"]] == ["2026-10-02", "2026-11-17"]
-    assert body["customer"]["phone"] == "+91 9944200178"
-    assert body["totals"]["bricks_ordered"] == 4200
-    assert body["totals"]["order_value"] == "155700.00"
+    assert first["customer_name"] == "sundharaj" and first["booking_id"] == booking["id"]
+    body = client.get(f"/api/bookings/{booking['id']}").get_json()
+    assert len(body["invoices"]) == 3
+    assert body["delivered_quantity"] == 4700 and body["remaining_quantity"] == 5300
+    assert body["invoiced_amount"] == "213200.00"
 
-    ranged = client.get("/api/orders/statement?phone=9944200178&from=2026-11-01").get_json()
-    assert len(ranged["items"]) == 1 and ranged["from"] == "2026-11-01"
+    listed = client.get("/api/bookings?q=99442").get_json()
+    assert listed["total_rows"] == 1 and listed["items"][0]["invoice_count"] == 3
 
 
-def test_statement_requires_phone_and_handles_no_bills(client):
-    assert client.get("/api/orders/statement").status_code == 400
-    body = client.get("/api/orders/statement?phone=9123456789").get_json()
-    assert body["customer"] is None and body["items"] == []
+def test_editing_order_customer_updates_its_invoices(client):
+    booking = client.post("/api/bookings", json=booking_payload()).get_json()
+    invoice = client.post("/api/orders", json=order_payload(booking_id=booking["id"])).get_json()
+    res = client.put(f"/api/bookings/{booking['id']}", json=booking_payload(customer_name="Sundharaj K"))
+    assert res.status_code == 200
+    assert client.get(f"/api/orders/{invoice['id']}").get_json()["customer_name"] == "Sundharaj K"
+
+
+def test_order_with_invoices_cannot_be_deleted(client):
+    booking = client.post("/api/bookings", json=booking_payload()).get_json()
+    invoice = client.post("/api/orders", json=order_payload(booking_id=booking["id"])).get_json()
+    assert client.delete(f"/api/bookings/{booking['id']}").status_code == 400
+    client.delete(f"/api/orders/{invoice['id']}")
+    assert client.delete(f"/api/bookings/{booking['id']}").status_code == 200
+
+
+def test_invoice_without_order_gets_its_own_order(client):
+    invoice = client.post("/api/orders", json=order_payload(quantity="700")).get_json()
+    booking = client.get(f"/api/bookings/{invoice['booking_id']}").get_json()
+    assert booking["booked_quantity"] == 700 and booking["customer_name"] == "Test Customer"
+
+
+def test_group_combines_ticked_invoices_of_one_order(client):
+    booking = client.post("/api/bookings", json=booking_payload()).get_json()
+    a = client.post("/api/orders", json=order_payload(booking_id=booking["id"], quantity="3200",
+                                                      rate_per_brick="46.00")).get_json()
+    b = client.post("/api/orders", json=order_payload(booking_id=booking["id"], quantity="1500",
+                                                      rate_per_brick="44.00", order_date="2026-10-01")).get_json()
+    client.post("/api/orders", json=order_payload(booking_id=booking["id"]))
+
+    body = client.get(f"/api/orders/group?ids={a['id']},{b['id']}").get_json()
+    assert [o["id"] for o in body["items"]] == [b["id"], a["id"]]
+    assert body["totals"]["bricks_ordered"] == 4700 and body["totals"]["order_value"] == "213200.00"
+    assert body["customer"]["name"] == "sundharaj"
+
+
+def test_group_rejects_invoices_from_different_orders(client):
+    one = client.post("/api/orders", json=order_payload()).get_json()
+    two = client.post("/api/orders", json=order_payload()).get_json()
+    assert client.get(f"/api/orders/group?ids={one['id']},{two['id']}").status_code == 400
+    assert client.get("/api/orders/group?ids=").status_code == 400

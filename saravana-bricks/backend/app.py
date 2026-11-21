@@ -21,6 +21,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
 
     from routes.auth import auth_bp
+    from routes.bookings import bookings_bp
     from routes.dashboard import dashboard_bp
     from routes.employees import employees_bp
     from routes.orders import orders_bp
@@ -28,7 +29,8 @@ def create_app(config_class=Config):
     from routes.profile import profile_bp
     from routes.purchases import purchases_bp
 
-    for bp in (auth_bp, profile_bp, purchases_bp, production_bp, orders_bp, dashboard_bp, employees_bp):
+    for bp in (auth_bp, profile_bp, purchases_bp, production_bp, bookings_bp, orders_bp, dashboard_bp,
+               employees_bp):
         app.register_blueprint(bp)
 
     @app.get("/api/health")

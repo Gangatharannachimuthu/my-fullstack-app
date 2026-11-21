@@ -13,8 +13,11 @@ import ProductionForm from './pages/ProductionForm';
 import Orders from './pages/Orders';
 import OrderForm from './pages/OrderForm';
 import OrderDetail from './pages/OrderDetail';
+import GroupInvoicePage from './pages/GroupInvoicePage';
+import Invoices from './pages/Invoices';
+import InvoiceForm from './pages/InvoiceForm';
+import InvoiceDetail from './pages/InvoiceDetail';
 import InvoicePage from './pages/InvoicePage';
-import ConsolidatedInvoicePage from './pages/ConsolidatedInvoicePage';
 import AdminProfile from './pages/AdminProfile';
 import Employees from './pages/Employees';
 import './styles.css';
@@ -45,10 +48,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/manufacturing/:id/edit" element={<ProductionForm />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/new" element={<OrderForm />} />
-            <Route path="/orders/statement" element={<ConsolidatedInvoicePage />} />
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/orders/:id/edit" element={<OrderForm />} />
-            <Route path="/orders/:id/invoice" element={<InvoicePage />} />
+            <Route path="/orders/:bookingId/invoices/new" element={<InvoiceForm />} />
+            <Route path="/orders/:id/group" element={<GroupInvoicePage />} />
+            <Route path="/invoices" element={<Invoices />} />
+            <Route path="/invoices/:id" element={<InvoiceDetail />} />
+            <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
+            <Route path="/invoices/:id/print" element={<InvoicePage />} />
             <Route path="/employees" element={<Employees />} />
             <Route path="/admin-profile" element={<AdminProfile />} />
           </Route>

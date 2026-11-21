@@ -2,30 +2,23 @@ import { forwardRef } from 'react';
 import { formatCount, formatDate, formatINR, rupeesInWords, todayLocal } from '../utils/format';
 import { InvoiceSeller, invoiceBusinessName } from './InvoiceSheet';
 
-function periodLabel(from, to) {
-  if (from && to) return `${formatDate(from)} to ${formatDate(to)}`;
-  if (from) return `From ${formatDate(from)}`;
-  if (to) return `Up to ${formatDate(to)}`;
-  return 'All bills';
-}
-
-/** A4 consolidated invoice: every bill for one customer, with combined totals. */
-const ConsolidatedInvoiceSheet = forwardRef(function ConsolidatedInvoiceSheet({ statement: s, business: b }, ref) {
+/** A4 invoice listing several invoices of one order, with combined totals. */
+const GroupInvoiceSheet = forwardRef(function GroupInvoiceSheet({ group: s, business: b }, ref) {
   const c = s.customer;
   const t = s.totals;
   const tracking = b.payment_tracking_enabled && s.items.some((o) => o.amount_paid !== null);
 
   return (
-    <article className="invoice invoice-multi" ref={ref} aria-label={`Consolidated invoice for ${c.name}`}>
+    <article className="invoice invoice-multi" ref={ref} aria-label={`Grouped invoice for ${c.name}`}>
       <header className="inv-head">
         <InvoiceSeller business={b} />
         <div className="inv-title">
-          <h2>CONSOLIDATED INVOICE</h2>
+          <h2>INVOICE</h2>
           <table>
             <tbody>
               <tr><th>Date</th><td>{formatDate(todayLocal())}</td></tr>
-              <tr><th>Period</th><td>{periodLabel(s.from, s.to)}</td></tr>
-              <tr><th>Bills</th><td>{s.items.length}</td></tr>
+              <tr><th>Order</th><td>#{s.booking_id}</td></tr>
+              <tr><th>Invoices</th><td>{s.items.length}</td></tr>
             </tbody>
           </table>
         </div>
@@ -103,4 +96,4 @@ const ConsolidatedInvoiceSheet = forwardRef(function ConsolidatedInvoiceSheet({ 
   );
 });
 
-export default ConsolidatedInvoiceSheet;
+export default GroupInvoiceSheet;

@@ -80,11 +80,11 @@ export default function Dashboard() {
           <div className="grid-2">
             <section className="card">
               <div className="card-head">
-                <h2>Recent orders</h2>
-                <Link to="/orders" className="link">View all</Link>
+                <h2>Recent invoices</h2>
+                <Link to="/invoices" className="link">View all</Link>
               </div>
               {d.recent_orders.length === 0 ? (
-                <Empty title="No orders in this period">
+                <Empty title="No invoices in this period">
                   <Link to="/orders/new" className="link">Create the first order</Link>
                 </Empty>
               ) : (
@@ -94,7 +94,7 @@ export default function Dashboard() {
                     <tbody>
                       {d.recent_orders.map((o) => (
                         <tr key={o.id}>
-                          <td><Link className="link" to={`/orders/${o.id}`}>{o.invoice_number}</Link></td>
+                          <td><Link className="link" to={`/invoices/${o.id}`}>{o.invoice_number}</Link></td>
                           <td>{formatDate(o.order_date)}</td>
                           <td>{o.customer_name}</td>
                           <td className="num">{formatINR(o.total_amount)}</td>

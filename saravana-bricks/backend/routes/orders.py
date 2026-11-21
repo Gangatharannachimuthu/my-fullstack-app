@@ -1,4 +1,3 @@
-import re
 from decimal import Decimal
 
 from flask import Blueprint, jsonify, request
@@ -6,7 +5,8 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from extensions import db
-from models import ORDER_STATUSES, PAYMENT_STATUSES, TAX_TYPES, CustomerOrder, utcnow
+from models import ORDER_STATUSES, PAYMENT_STATUSES, TAX_TYPES, Booking, CustomerOrder, utcnow
+from routes.bookings import CUSTOMER_FIELDS
 from services.auth import require_auth
 from services.calc import ZERO, compute_order, compute_payment
 from services.common import csv_response, get_profile, next_invoice_number
@@ -155,6 +155,23 @@ def export_csv():
     return csv_response("customer-orders.csv", header, data)
 
 
+def _booking_for(data):
+    raw = data.get("booking_id")
+    if raw in (None, ""):
+        return None
+    try:
+        booking = db.session.get(Booking, int(raw))
+    except (TypeError, ValueError):
+        booking = None
+    if booking is None:
+        raise ValidationError({"booking_id": "This order no longer exists."})
+    return booking
+
+
+def _customer_of(booking):
+    return {key: getattr(booking, key) for key in CUSTOMER_FIELDS}
+
+
 def _existing_for_request(request_id):
     if not request_id:
         return None
@@ -169,7 +186,17 @@ def create():
     if existing:
         return jsonify(existing.to_dict()), 200
 
-    values = _parse(request.get_json(silent=True))
+    data = request.get_json(silent=True) or {}
+    booking = _booking_for(data)
+    values = _parse({**data, **_customer_of(booking)} if booking else data)
+    if booking is None:
+        # Invoice made without an order (older clients): it becomes an order of its own.
+        booking = Booking(
+            order_date=values["order_date"], brick_type=values["brick_type"],
+            booked_quantity=values["quantity"], **{k: values[k] for k in CUSTOMER_FIELDS},
+        )
+        db.session.add(booking)
+    values["booking"] = booking
     for _attempt in range(5):
         try:
             invoice_number = next_invoice_number(values["order_date"].year)
@@ -191,38 +218,33 @@ def create():
     raise ValidationError({}, "Could not issue an invoice number. Please try again.")
 
 
-@orders_bp.get("/statement")
+@orders_bp.get("/group")
 @require_auth
-def statement():
-    """Every bill for one customer, for the consolidated invoice.
-
-    Customers are matched on the last 10 digits of their phone, so "99442 00178"
-    and "+91 9944200178" count as the same person. Drafts and cancelled orders
-    are not bills, so they are left out.
-    """
-    digits = re.sub(r"\D", "", request.args.get("phone") or "")[-10:]
-    if len(digits) < 6:
-        raise ValidationError({"phone": "Enter the customer's phone number."})
-    start, end = resolve_period(request.args)
-    plain_phone = func.replace(func.replace(CustomerOrder.customer_phone, " ", ""), "-", "")
-    query = CustomerOrder.query.filter(
-        plain_phone.like(f"%{digits}"),
-        CustomerOrder.order_status.in_(("Confirmed", "Completed")),
+def group():
+    """Ticked invoices of one order, for the grouped invoice. Cancelled ones are skipped."""
+    try:
+        ids = {int(i) for i in (request.args.get("ids") or "").split(",") if i.strip()}
+    except ValueError:
+        ids = set()
+    if not ids:
+        raise ValidationError({"ids": "Tick at least one invoice to group."})
+    items = (
+        CustomerOrder.query.filter(CustomerOrder.id.in_(ids), CustomerOrder.order_status != "Cancelled")
+        .order_by(CustomerOrder.order_date, CustomerOrder.id).all()
     )
-    if start:
-        query = query.filter(CustomerOrder.order_date >= start)
-    if end:
-        query = query.filter(CustomerOrder.order_date <= end)
-    items = query.order_by(CustomerOrder.order_date, CustomerOrder.id).all()
-    latest = items[-1] if items else None
+    if not items:
+        raise ValidationError({"ids": "None of the ticked invoices can be grouped."})
+    if len({i.booking_id for i in items}) > 1:
+        raise ValidationError({"ids": "Only invoices from the same order can be grouped."})
+    query = CustomerOrder.query.filter(CustomerOrder.id.in_([i.id for i in items]))
+    latest = items[-1]
     return jsonify({
-        "customer": latest and {
+        "booking_id": latest.booking_id,
+        "customer": {
             "name": latest.customer_name,
             "phone": latest.customer_phone,
             "address": latest.customer_address,
         },
-        "from": start.isoformat() if start else None,
-        "to": end.isoformat() if end else None,
         "items": [i.to_dict() for i in items],
         "totals": order_totals(query),
     })
@@ -240,8 +262,11 @@ def update(order_id):
     order = db.get_or_404(CustomerOrder, order_id)
     if order.order_status == "Cancelled":
         raise ValidationError({}, "A cancelled order cannot be edited.")
-    # The invoice number stays fixed for the life of the order.
-    for key, value in _parse(request.get_json(silent=True)).items():
+    data = request.get_json(silent=True) or {}
+    if order.booking:
+        data = {**data, **_customer_of(order.booking)}
+    # The invoice number stays fixed for the life of the invoice.
+    for key, value in _parse(data).items():
         setattr(order, key, value)
     db.session.commit()
     return jsonify(order.to_dict())

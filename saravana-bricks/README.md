@@ -30,7 +30,8 @@ Schema `saravana_bricks_db` (utf8mb4).
 | `business_profile` | Name, address, optional phone/email/GSTIN/logo, invoice terms, payment-tracking switch |
 | `material_purchases` | Raw-material purchases; voided rather than deleted |
 | `production_entries` | Daily production; several entries per date are summed |
-| `customer_orders` | Orders with server-calculated totals and unique invoice numbers |
+| `bookings` | Customer orders: customer details and total bricks booked |
+| `customer_orders` | Invoices, each belonging to an order (`booking_id`), with server-calculated totals and unique invoice numbers |
 | `invoice_counters` | Last invoice number per year (only ever increases) |
 | `employees` | Team members (start date, active flag) |
 | `attendance_exceptions` | Half days (0.5) and leave (0) only; no row means a full day |

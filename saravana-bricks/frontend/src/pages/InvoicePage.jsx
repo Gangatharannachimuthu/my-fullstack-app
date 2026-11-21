@@ -24,7 +24,7 @@ export default function InvoicePage() {
     <div className="page invoice-page">
       <div className="page-head no-print">
         <div>
-          <Link to={`/orders/${id}`} className="link back"><ArrowLeft size={16} aria-hidden="true" /> Order {order.data.invoice_number}</Link>
+          <Link to={`/invoices/${id}`} className="link back"><ArrowLeft size={16} aria-hidden="true" /> Invoice {order.data.invoice_number}</Link>
           <h1>Invoice preview</h1>
         </div>
         <div className="actions">

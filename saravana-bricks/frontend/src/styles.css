@@ -196,6 +196,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--brick); outline:
 .span-2 { grid-column: 1 / -1; }
 .form-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 .form-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.form-narrow { display: flex; flex-direction: column; gap: 16px; max-width: 760px; align-items: flex-start; }
+.form-narrow > .card { align-self: stretch; }
+.c-check { width: 36px; text-align: center !important; }
+.c-check input { width: 18px; height: 18px; min-height: 0; accent-color: var(--brick); cursor: pointer; }
+.btn.disabled { opacity: 0.5; cursor: not-allowed; }
 .form-side .sticky { position: sticky; top: 16px; }
 .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; margin: 8px 0; }
@@ -311,7 +316,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--brick); outline:
 .inv-terms { flex: 1; font-size: 9pt; }
 .inv-sign { text-align: center; min-width: 60mm; font-size: 9.5pt; }
 .inv-sign-line { border-bottom: 1px solid #111; height: 16mm; margin-bottom: 4px; }
-/* Consolidated invoice: can run to several pages, so no fixed A4 height. */
+/* Grouped invoice: can run to several pages, so no fixed A4 height. */
 .invoice-multi h2 { font-size: 12.5pt; letter-spacing: 0.06em; white-space: nowrap; }
 .invoice-multi .inv-items th, .invoice-multi .inv-items td { padding: 5px 6px; font-size: 9pt; }
 .invoice-multi .inv-items .nowrap { white-space: nowrap; }

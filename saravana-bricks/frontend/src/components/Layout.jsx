@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Factory, LayoutDashboard, LogOut, ReceiptText, Truck, UserCog, Users } from 'lucide-react';
+import { ClipboardList, Factory, LayoutDashboard, LogOut, ReceiptText, Truck, UserCog, Users } from 'lucide-react';
 import { useAuth } from '../auth';
 import { useBusiness } from '../business';
 
@@ -7,7 +7,8 @@ const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/raw-materials', label: 'Raw Materials', icon: Truck },
   { to: '/manufacturing', label: 'Manufacturing', icon: Factory },
-  { to: '/orders', label: 'Orders & Bills', icon: ReceiptText },
+  { to: '/orders', label: 'Orders', icon: ClipboardList },
+  { to: '/invoices', label: 'Invoices', icon: ReceiptText },
   { to: '/employees', label: 'Employees', icon: Users },
   { to: '/admin-profile', label: 'Admin Profile', icon: UserCog },
 ];

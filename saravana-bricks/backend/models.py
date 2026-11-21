@@ -251,10 +251,70 @@ class InvoiceCounter(db.Model):
     last_number = db.Column(db.Integer, nullable=False, default=0)
 
 
+class Booking(TimestampMixin, db.Model):
+    """A customer's order: the bricks they booked, delivered through one or more invoices.
+
+    Each invoice is a CustomerOrder row (the table predates orders holding several bills).
+    """
+
+    __tablename__ = "bookings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_date = db.Column(db.Date, nullable=False, index=True)
+    customer_name = db.Column(db.String(150), nullable=False, index=True)
+    customer_phone = db.Column(db.String(20), nullable=False, index=True)
+    customer_address = db.Column(db.String(500), nullable=False)
+    delivery_address = db.Column(db.String(500))
+    brick_type = db.Column(db.String(100))
+    booked_quantity = db.Column(db.Integer, nullable=False)
+    notes = db.Column(db.Text)
+
+    invoices = db.relationship("CustomerOrder", back_populates="booking",
+                               order_by="[CustomerOrder.order_date, CustomerOrder.id]")
+
+    __table_args__ = (db.CheckConstraint("booked_quantity > 0", name="ck_booking_qty_positive"),)
+
+    def summary(self):
+        """Delivered and billed so far; cancelled invoices count for nothing."""
+        live = [i for i in self.invoices if i.order_status != "Cancelled"]
+        delivered = sum(i.quantity for i in live)
+        tracked = [i for i in live if i.amount_paid is not None]
+        return {
+            "invoice_count": len(self.invoices),
+            "delivered_quantity": delivered,
+            "remaining_quantity": self.booked_quantity - delivered,
+            "invoiced_amount": _money(sum((i.total_amount for i in live), Decimal("0"))),
+            "amount_paid": _money(sum((i.amount_paid for i in tracked), Decimal("0"))),
+            "balance_due": _money(sum((i.balance_due for i in tracked), Decimal("0"))),
+        }
+
+    def to_dict(self, with_invoices=False):
+        data = {
+            "id": self.id,
+            "order_date": _date(self.order_date),
+            "customer_name": self.customer_name,
+            "customer_phone": self.customer_phone,
+            "customer_address": self.customer_address,
+            "delivery_address": self.delivery_address,
+            "brick_type": self.brick_type,
+            "booked_quantity": self.booked_quantity,
+            "notes": self.notes,
+            "created_at": _iso_utc(self.created_at),
+            "updated_at": _iso_utc(self.updated_at),
+            **self.summary(),
+        }
+        if with_invoices:
+            data["invoices"] = [i.to_dict() for i in self.invoices]
+        return data
+
+
 class CustomerOrder(TimestampMixin, db.Model):
+    """One invoice (bill) within a Booking."""
+
     __tablename__ = "customer_orders"
 
     id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey("bookings.id"), index=True)
     invoice_number = db.Column(db.String(30), nullable=False, unique=True)
     # Lets a double-clicked submit return the first order instead of creating two.
     client_request_id = db.Column(db.String(64), unique=True)
@@ -284,6 +344,8 @@ class CustomerOrder(TimestampMixin, db.Model):
     notes = db.Column(db.Text)
     cancelled_at = db.Column(db.DateTime)
 
+    booking = db.relationship("Booking", back_populates="invoices")
+
     __table_args__ = (
         db.CheckConstraint("quantity > 0", name="ck_order_qty_positive"),
         db.CheckConstraint("rate_per_brick >= 0", name="ck_order_rate_non_negative"),
@@ -293,6 +355,7 @@ class CustomerOrder(TimestampMixin, db.Model):
         return {
             "id": self.id,
             "invoice_number": self.invoice_number,
+            "booking_id": self.booking_id,
             "order_date": _date(self.order_date),
             "customer_name": self.customer_name,
             "customer_phone": self.customer_phone,
