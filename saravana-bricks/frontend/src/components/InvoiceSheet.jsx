@@ -7,28 +7,38 @@ const OWNER_PHONES = ['8056719423', '8300856003'];
 const nonZero = (v) => v && Number(v) !== 0;
 const half = (rate) => `${Number(rate) / 2}%`;
 
+/** Name as printed on invoices, without the trailing "Manufacturing". */
+export const invoiceBusinessName = (b) => b.business_name.replace(/\s+Manufacturing$/i, '');
+
+/** Seller block at the top left of every invoice. */
+export function InvoiceSeller({ business: b }) {
+  const phones = [...new Set([...OWNER_PHONES, b.phone].filter(Boolean))].join(', ');
+  return (
+    <div className="inv-seller">
+      {b.logo_data && <img src={b.logo_data} alt="" className="inv-logo" />}
+      <div>
+        <h1>{invoiceBusinessName(b)}</h1>
+        <p>{b.address}</p>
+        <p>{[`Phone: ${phones}`, b.email && `Email: ${b.email}`].filter(Boolean).join(' · ')}</p>
+        {b.gstin && <p><strong>GSTIN:</strong> {b.gstin}</p>}
+      </div>
+    </div>
+  );
+}
+
 /** A4 invoice. Used for the on-screen preview, printing and the PDF download. */
 const InvoiceSheet = forwardRef(function InvoiceSheet({ order: o, business: b }, ref) {
   const tracking = b.payment_tracking_enabled && o.amount_paid !== null;
   const description = o.brick_type ? `Interlock bricks — ${o.brick_type}` : 'Interlock bricks';
   const showTaxable = nonZero(o.discount_amount) || o.tax_type !== 'none';
-  const phones = [...new Set([...OWNER_PHONES, b.phone].filter(Boolean))].join(', ');
-  const businessName = b.business_name.replace(/\s+Manufacturing$/i, '');
+  const businessName = invoiceBusinessName(b);
 
   return (
     <article className="invoice" ref={ref} aria-label={`Invoice ${o.invoice_number}`}>
       {o.order_status === 'Cancelled' && <div className="invoice-stamp" aria-hidden="true">CANCELLED</div>}
 
       <header className="inv-head">
-        <div className="inv-seller">
-          {b.logo_data && <img src={b.logo_data} alt="" className="inv-logo" />}
-          <div>
-            <h1>{businessName}</h1>
-            <p>{b.address}</p>
-            <p>{[`Phone: ${phones}`, b.email && `Email: ${b.email}`].filter(Boolean).join(' · ')}</p>
-            {b.gstin && <p><strong>GSTIN:</strong> {b.gstin}</p>}
-          </div>
-        </div>
+        <InvoiceSeller business={b} />
         <div className="inv-title">
           <h2>INVOICE</h2>
           <table>

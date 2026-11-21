@@ -243,3 +243,28 @@ def test_password_change_requires_current_password(client):
         "current_password": "wrong", "new_password": "another-pass-1", "confirm_password": "another-pass-1"})
     assert res.status_code == 400
     assert "current_password" in res.get_json()["fields"]
+
+
+def test_statement_collects_one_customers_bills(client):
+    client.post("/api/orders", json=order_payload(customer_phone="99442 00178", order_date="2026-10-02"))
+    client.post("/api/orders", json=order_payload(customer_phone="+91 9944200178", order_date="2026-11-17",
+                                                  quantity="3200", rate_per_brick="46.00"))
+    client.post("/api/orders", json=order_payload(customer_phone="9944200178", order_status="Draft"))
+    cancelled = client.post("/api/orders", json=order_payload(customer_phone="9944200178")).get_json()
+    client.post(f"/api/orders/{cancelled['id']}/cancel")
+    client.post("/api/orders", json=order_payload(customer_phone="9000000002"))
+
+    body = client.get("/api/orders/statement?phone=9944200178").get_json()
+    assert [o["order_date"] for o in body["items"]] == ["2026-10-02", "2026-11-17"]
+    assert body["customer"]["phone"] == "+91 9944200178"
+    assert body["totals"]["bricks_ordered"] == 4200
+    assert body["totals"]["order_value"] == "155700.00"
+
+    ranged = client.get("/api/orders/statement?phone=9944200178&from=2026-11-01").get_json()
+    assert len(ranged["items"]) == 1 and ranged["from"] == "2026-11-01"
+
+
+def test_statement_requires_phone_and_handles_no_bills(client):
+    assert client.get("/api/orders/statement").status_code == 400
+    body = client.get("/api/orders/statement?phone=9123456789").get_json()
+    assert body["customer"] is None and body["items"] == []

@@ -311,6 +311,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--brick); outline:
 .inv-terms { flex: 1; font-size: 9pt; }
 .inv-sign { text-align: center; min-width: 60mm; font-size: 9.5pt; }
 .inv-sign-line { border-bottom: 1px solid #111; height: 16mm; margin-bottom: 4px; }
+/* Consolidated invoice: can run to several pages, so no fixed A4 height. */
+.invoice-multi h2 { font-size: 12.5pt; letter-spacing: 0.06em; white-space: nowrap; }
+.invoice-multi .inv-items th, .invoice-multi .inv-items td { padding: 5px 6px; font-size: 9pt; }
+.invoice-multi .inv-items .nowrap { white-space: nowrap; }
+.invoice-multi .inv-foot { padding-top: 14mm; }
+.invoice-multi.pdf-export { min-height: 0; }
+.inv-note { font-size: 8.5pt; color: #555; font-style: normal !important; }
 .invoice-stamp {
   position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg);
   font-size: 54pt; font-weight: 900; color: rgba(180, 35, 24, 0.14); border: 6px solid rgba(180, 35, 24, 0.14);
@@ -361,7 +368,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--brick); outline:
   .invoice-scroll { overflow: visible; padding: 0; }
   .invoice { box-shadow: none; border: 0; margin: 0; width: 210mm; min-height: 296mm; }
   .invoice, .invoice * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .invoice-multi { page: multi; min-height: 0; padding-top: 0; padding-bottom: 0; }
+  .invoice-multi .inv-items tr, .invoice-multi .inv-bottom, .invoice-multi .inv-foot { break-inside: avoid; }
 }
+@page multi { size: A4; margin: 14mm 0; }
 
 /* ---------- Attendance ---------- */
 .seg { display: inline-flex; border: 1px solid #cfc5bc; border-radius: 8px; overflow: hidden; }

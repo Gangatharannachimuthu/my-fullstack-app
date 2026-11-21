@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from flask import Blueprint, jsonify, request
@@ -188,6 +189,43 @@ def create():
             if getattr(err.orig, "args", [None])[0] not in (1205, 1213):
                 raise
     raise ValidationError({}, "Could not issue an invoice number. Please try again.")
+
+
+@orders_bp.get("/statement")
+@require_auth
+def statement():
+    """Every bill for one customer, for the consolidated invoice.
+
+    Customers are matched on the last 10 digits of their phone, so "99442 00178"
+    and "+91 9944200178" count as the same person. Drafts and cancelled orders
+    are not bills, so they are left out.
+    """
+    digits = re.sub(r"\D", "", request.args.get("phone") or "")[-10:]
+    if len(digits) < 6:
+        raise ValidationError({"phone": "Enter the customer's phone number."})
+    start, end = resolve_period(request.args)
+    plain_phone = func.replace(func.replace(CustomerOrder.customer_phone, " ", ""), "-", "")
+    query = CustomerOrder.query.filter(
+        plain_phone.like(f"%{digits}"),
+        CustomerOrder.order_status.in_(("Confirmed", "Completed")),
+    )
+    if start:
+        query = query.filter(CustomerOrder.order_date >= start)
+    if end:
+        query = query.filter(CustomerOrder.order_date <= end)
+    items = query.order_by(CustomerOrder.order_date, CustomerOrder.id).all()
+    latest = items[-1] if items else None
+    return jsonify({
+        "customer": latest and {
+            "name": latest.customer_name,
+            "phone": latest.customer_phone,
+            "address": latest.customer_address,
+        },
+        "from": start.isoformat() if start else None,
+        "to": end.isoformat() if end else None,
+        "items": [i.to_dict() for i in items],
+        "totals": order_totals(query),
+    })
 
 
 @orders_bp.get("/<int:order_id>")

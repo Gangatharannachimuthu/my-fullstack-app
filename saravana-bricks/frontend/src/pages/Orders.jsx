@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, FileText, Plus, Search, Trash2 } from 'lucide-react';
+import { Download, FileText, Files, Plus, Search, Trash2 } from 'lucide-react';
 import { api, downloadCsv } from '../api';
 import { useBusiness } from '../business';
 import PeriodFilter, { newEntryLink, periodInvalid, periodParams, usePeriod } from '../components/PeriodFilter';
@@ -128,6 +128,10 @@ export default function Orders() {
                       <Link className="btn btn-small btn-ghost" to={`/orders/${o.id}/invoice`}
                         aria-label={`Invoice ${o.invoice_number}`}>
                         <FileText size={15} aria-hidden="true" /> Invoice
+                      </Link>
+                      <Link className="btn btn-small btn-ghost" to={`/orders/statement?phone=${encodeURIComponent(o.customer_phone)}`}
+                        title="Consolidated invoice (all bills for this customer)" aria-label={`Consolidated invoice for ${o.customer_name}`}>
+                        <Files size={15} aria-hidden="true" />
                       </Link>
                       <button type="button" className="btn btn-small btn-ghost danger-text" title="Delete"
                         aria-label={`Delete order ${o.invoice_number}`} onClick={() => setDeleting(o)}>

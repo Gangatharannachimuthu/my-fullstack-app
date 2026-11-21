@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, FileText, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ban, FileText, Files, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useBusiness } from '../business';
 import { ConfirmDialog, ErrorBox, Loading, StatusBadge, useLoader } from '../components/ui';
@@ -50,6 +50,9 @@ export default function OrderDetail() {
               <Link to={`/orders/${o.id}/edit`} className="btn btn-secondary"><Pencil size={18} aria-hidden="true" /> Edit</Link>
             </>
           )}
+          <Link to={`/orders/statement?phone=${encodeURIComponent(o.customer_phone)}`} className="btn btn-secondary">
+            <Files size={18} aria-hidden="true" /> Consolidated invoice
+          </Link>
           <Link to={`/orders/${o.id}/invoice`} className="btn btn-primary"><FileText size={18} aria-hidden="true" /> Invoice / Print / PDF</Link>
         </div>
       </div>
